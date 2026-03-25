@@ -4,271 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOAT Forum</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f8;
-            color: #222;
-            line-height: 1.6;
-        }
-
-        header {
-            background-color: #1f2937;
-            color: white;
-            padding: 20px 40px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .logo h1 {
-            font-size: 28px;
-        }
-
-        nav ul {
-            list-style: none;
-            display: flex;
-            gap: 20px;
-        }
-
-        nav ul li a {
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
-        nav ul li a:hover {
-            color: #60a5fa;
-        }
-
-        .search {
-            display: flex;
-            gap: 10px;
-        }
-
-        .search input {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            outline: none;
-        }
-
-        .search button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            background-color: #2563eb;
-            color: white;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .search button:hover {
-            background-color: #1d4ed8;
-        }
-
-        main {
-            display: flex;
-            gap: 20px;
-            padding: 30px 40px;
-        }
-
-        aside {
-            width: 25%;
-            background-color: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            height: fit-content;
-        }
-
-        aside h2 {
-            margin-bottom: 15px;
-            color: #1f2937;
-        }
-
-        aside ul {
-            list-style: none;
-        }
-
-        aside ul li {
-            margin-bottom: 12px;
-        }
-
-        aside ul li a {
-            text-decoration: none;
-            color: #2563eb;
-            transition: 0.3s;
-        }
-
-        aside ul li a:hover {
-            color: #1d4ed8;
-        }
-
-        .forum-content {
-            width: 75%;
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-
-        .thread-list,
-        .thread-view,
-        .new-thread {
-            background-color: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .thread-list h2,
-        .thread-view h2,
-        .new-thread h2 {
-            margin-bottom: 20px;
-            color: #1f2937;
-        }
-
-        .thread {
-            padding: 15px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .thread:last-child {
-            border-bottom: none;
-        }
-
-        .thread h3 a {
-            text-decoration: none;
-            color: #111827;
-            transition: 0.3s;
-        }
-
-        .thread h3 a:hover {
-            color: #2563eb;
-        }
-
-        .thread p {
-            margin-top: 8px;
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        .post {
-            background-color: #f9fafb;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            border-left: 4px solid #2563eb;
-        }
-
-        .post h4 {
-            color: #1f2937;
-            margin-bottom: 5px;
-        }
-
-        .post p:first-of-type {
-            color: #6b7280;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        form input,
-        form select,
-        form textarea {
-            width: 100%;
-            padding: 10px 12px;
-            margin-top: 6px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        form textarea {
-            resize: vertical;
-        }
-
-        form button {
-            padding: 10px 18px;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        form button:hover {
-            background-color: #1d4ed8;
-        }
-
-        footer {
-            background-color: #1f2937;
-            color: white;
-            text-align: center;
-            padding: 18px;
-            margin-top: 20px;
-        }
-
-        @media (max-width: 900px) {
-            main {
-                flex-direction: column;
-            }
-
-            aside,
-            .forum-content {
-                width: 100%;
-            }
-
-            header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            nav ul {
-                flex-wrap: wrap;
-            }
-
-            .search {
-                width: 100%;
-            }
-
-            .search input {
-                flex: 1;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">    
 </head>
 <body>
-
     <header>
         <div class="logo">
             <h1>GOAT Forum</h1>
         </div>
 
+        <div class="search">
+            <input type="text" placeholder="Пошук по форуму">
+            <button>Пошук</button>
+        </div>
         <nav>
             <ul>
                 <li><a href="#">Головна</a></li>
                 <li><a href="#">Категорії</a></li>
                 <li><a href="#">Популярні теми</a></li>
-                <li><a href="#">Профіль</a></li>
                 <li><a href="#">Вхід</a></li>
             </ul>
         </nav>
 
-        <div class="search">
-            <input type="text" placeholder="Пошук по форуму">
-            <button>Пошук</button>
-        </div>
     </header>
 
     <main>
@@ -286,7 +42,7 @@
         <section class="forum-content">
 
             <section class="thread-list">
-                <h2>Останні теми</h2>
+                <h2>Популярні теми</h2>
 
                 <article class="thread">
                     <h3><a href="#">Найкращі гравці CS2 у 2026 році</a></h3>
@@ -332,6 +88,7 @@
                         <option>Технології</option>
                         <option>Навчання</option>
                         <option>Спорт</option>
+                        <option>Фільми та категорії</option>
                     </select>
 
                     <label for="message">Текст повідомлення:</label>
@@ -345,7 +102,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 ForumHub. Усі права захищені.</p>
+        <p>&copy; 2026 GOATForum. Не усі права захищені.</p>
     </footer>
 
 </body>
