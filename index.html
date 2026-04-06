@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>GOAT Forum</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="setPage('home')">
+    <div class="logo-icon">🐐</div>GOAT Forum
+  </div>
+  <div class="search-bar">
+    <span style="color:var(--muted)">🔍</span>
+    <input type="text" placeholder="Пошук по форуму…" oninput="handleSearch(this.value)"/>
+  </div>
+  <div class="header-actions" id="headerActions"></div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar-left">
+    <div class="nav-section">
+      <div class="nav-item active" onclick="setPage('home')"><span class="nav-icon">🏠</span>Головна</div>
+      <div class="nav-item" onclick="setPage('home')"><span class="nav-icon">🔥</span>Популярне</div>
+      <div class="nav-item" onclick="setPage('home')"><span class="nav-icon">📰</span>Новини</div>
+      <div class="nav-item" onclick="setPage('home')"><span class="nav-icon">🧭</span>Цікаве</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section">
+      <div class="nav-section-title">Спільноти</div>
+      <div class="nav-item"><div class="community-avatar">Іг</div>r/ігри</div>
+      <div class="nav-item"><div class="community-avatar blue">Тех</div>r/технології</div>
+      <div class="nav-item"><div class="community-avatar green">Сп</div>r/спорт</div>
+      <div class="nav-item"><div class="community-avatar purple">Фл</div>r/фільми</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section" style="padding-bottom:16px">
+      <div style="padding:4px;font-size:11px;color:var(--muted);line-height:1.8">Довідка · Правила<br>© 2026 GOAT Forum</div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- HOME -->
+    <div id="page-home" class="page active">
+      <div class="featured-row">
+        <div class="featured-card" onclick="openPost(0)"><div class="featured-img">🎮</div><div class="featured-card-body"><div class="featured-card-title">CS2 Major Антверп 2026</div><div class="featured-card-sub"><div class="sub-dot">r</div>r/GlobalOffensive та інші</div></div></div>
+        <div class="featured-card" onclick="openPost(1)"><div class="featured-img red">🗳️</div><div class="featured-card-body"><div class="featured-card-title">Вибори в Польщі 2026</div><div class="featured-card-sub"><div class="sub-dot" style="background:#1565c0">r</div>r/новини та інші</div></div></div>
+        <div class="featured-card" onclick="openPost(2)"><div class="featured-img green">💻</div><div class="featured-card-body"><div class="featured-card-title">React 20 — нові хуки</div><div class="featured-card-sub"><div class="sub-dot" style="background:#43a047">r</div>r/webdev та інші</div></div></div>
+        <div class="featured-card" onclick="openPost(3)"><div class="featured-img orange">⚽</div><div class="featured-card-body"><div class="featured-card-title">Ліга чемпіонів фінал</div><div class="featured-card-sub"><div class="sub-dot" style="background:#fb8c00">r</div>r/спорт та інші</div></div></div>
+      </div>
+      <div class="sort-bar">
+        <button class="sort-btn active" onclick="setSort(this,'best')">⭐ Найкращі</button>
+        <button class="sort-btn" onclick="setSort(this,'hot')">🔥 Гарячі</button>
+        <button class="sort-btn" onclick="setSort(this,'new')">✨ Нові</button>
+        <button class="sort-btn" onclick="setSort(this,'top')">📈 Топ</button>
+      </div>
+      <div id="postFeed"></div>
+    </div>
+
+    <!-- POST VIEW -->
+    <div id="page-post" class="page"><div id="postViewContent"></div></div>
+
+    <!-- PROFILE -->
+    <div id="page-profile" class="page"><div id="profileContent"></div></div>
+  </main>
+
+  <aside class="sidebar-right">
+    <div id="createPostWidget"></div>
+    <div class="widget">
+      <div class="widget-header">Популярні спільноти</div>
+      <div class="widget-body" style="padding:8px 14px">
+        <div class="community-row"><div class="community-num">1</div><div class="community-avatar" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/технології</div><div class="community-members">2.3M · <span class="community-trend">▲ 15%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
+        <div class="community-row"><div class="community-num">2</div><div class="community-avatar blue" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/навчання</div><div class="community-members">1.8M · <span class="community-trend">▲ 8%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
+        <div class="community-row"><div class="community-num">3</div><div class="community-avatar green" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/спорт</div><div class="community-members">980K · <span class="community-trend">▲ 22%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
+        <div class="community-row"><div class="community-num">4</div><div class="community-avatar purple" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/фільми</div><div class="community-members">734K · <span class="community-trend">▲ 5%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
+      </div>
+    </div>
+    <div class="widget">
+      <div class="widget-header">Правила форуму</div>
+      <div class="widget-body" style="padding:8px 14px">
+        <div class="rule-item"><span class="rule-num">1</span>Поважайте інших учасників</div>
+        <div class="rule-item"><span class="rule-num">2</span>Немає спаму або реклами</div>
+        <div class="rule-item"><span class="rule-num">3</span>Дотримуйтесь теми спільноти</div>
+        <div class="rule-item"><span class="rule-num">4</span>Перевіряйте джерела</div>
+        <div class="rule-item"><span class="rule-num">5</span>Використовуйте зрозумілі заголовки</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- CREATE POST MODAL -->
+<div class="overlay" id="createPostOverlay" onclick="closeIfOverlay(event,'createPostOverlay')">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-close" onclick="closeModal('createPostOverlay')">✕</button>
+    <h2>✏️ Новий пост</h2>
+    <p>Опублікуйте щось цікаве для спільноти</p>
+    <div class="form-field">
+      <label>Категорія</label>
+      <select id="postCategory">
+        <option value="r/ігри">🎮 r/ігри</option>
+        <option value="r/технології">💻 r/технології</option>
+        <option value="r/навчання">📚 r/навчання</option>
+        <option value="r/спорт">⚽ r/спорт</option>
+        <option value="r/фільми">🎬 r/фільми</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label>Заголовок</label>
+      <input type="text" id="postTitle" placeholder="Введіть заголовок поста…" maxlength="200"/>
+      <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:4px" id="titleCount">0 / 200</div>
+    </div>
+    <div class="form-field">
+      <label>Текст (необов'язково)</label>
+      <textarea id="postBody" placeholder="Розкажіть детальніше…" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px;resize:vertical;min-height:120px;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" style="border-radius:8px" onclick="closeModal('createPostOverlay')">Скасувати</button>
+      <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="submitPost()">Опублікувати</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="overlay" id="loginOverlay" onclick="closeIfOverlay(event,'loginOverlay')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('loginOverlay')">✕</button>
+    <h2>Ласкаво просимо!</h2>
+    <p>Увійдіть у свій акаунт</p>
+    <div class="auth-error" id="loginError"></div>
+    <div class="form-field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com"/></div>
+    <div class="form-field"><label>Пароль</label><input type="password" id="loginPassword" placeholder="••••••••"/></div>
+    <button class="btn btn-accent" style="width:100%;padding:10px;border-radius:8px;font-size:15px;font-weight:600" onclick="doSignin()">Увійти</button>
+    <div class="modal-divider">або</div>
+    <div class="modal-footer">Немає акаунту? <a onclick="switchToRegister()">Зареєструватись</a></div>
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="overlay" id="registerOverlay" onclick="closeIfOverlay(event,'registerOverlay')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('registerOverlay')">✕</button>
+    <h2>Реєстрація</h2>
+    <p>Приєднуйся до GOAT Forum</p>
+    <div class="auth-error" id="registerError"></div>
+    <div class="form-field"><label>Ім'я</label><input type="text" id="regName" placeholder="Ваше ім'я"/></div>
+    <div class="form-field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"/></div>
+    <div class="form-field"><label>Пароль</label><input type="password" id="regPassword" placeholder="••••••••"/></div>
+    <div class="form-field">
+      <label>Роль</label>
+      <select id="regRole">
+        <option value="user">Користувач</option>
+        <option value="admin">Адмін</option>
+      </select>
+    </div>
+    <button class="btn btn-accent" style="width:100%;padding:10px;border-radius:8px;font-size:15px;font-weight:600" onclick="doSignup()">Створити акаунт</button>
+    <div class="modal-footer" style="margin-top:14px">Вже є акаунт? <a onclick="switchToLogin()">Увійти</a></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
