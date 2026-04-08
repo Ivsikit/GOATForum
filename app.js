@@ -1,3 +1,5 @@
+// ═══════════════════════════ АВТОРИЗАЦІЯ (localStorage) ═══════════════════════════
+
 function getUsers(){
   try{return JSON.parse(localStorage.getItem('goat_users'))||[];}catch{return[];}
 }
@@ -45,11 +47,23 @@ function updateStoredUser(user){
   if(i>=0){users[i]=user;saveUsers(users);}
 }
 
-// ═══════════════════════════ POSTS DATA ═══════════════════════════
+// ═══════════════════════════ ДАНІ ПОСТІВ ТА КОНФІГ ═══════════════════════════
 
 let posts = [];
 let categoryConfig = {};
+
+function savePosts(list){ localStorage.setItem('goat_posts',JSON.stringify(list)); }
+
+function getAuthorName(post){
+  if(post.authorId){
+    const u=getUsers().find(u=>u.id===post.authorId);
+    if(u) return u.name;
+  }
+  return post.authorName||'Невідомий';
+}
+
 const voteMap={};
+const postComments={};
 
 // ═══════════════════════════ HEADER UI ═══════════════════════════
 
@@ -61,7 +75,7 @@ function renderHeader(){
   if(user){
     const ini=user.name.slice(0,2).toUpperCase();
     ha.innerHTML=`
-      <button style="background:var(--surface2);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px;border-radius:20px;padding:6px 14px;font-size:13px" onclick="openModal('createPostOverlay')">✏️ Створити</button>
+      <button style="background:var(--surface2);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px;border-radius:20px;padding:6px 14px;font-size:13px" onclick="openModal('createPostOverlay')">➕ Створити</button>
       <button class="notif-btn"><span>🔔</span><span class="notif-dot"></span></button>
       <div class="avatar-wrap">
         <div class="user-avatar" id="avatarBtn" onclick="toggleDropdown()" title="${user.name}">${ini}</div>
@@ -71,14 +85,13 @@ function renderHeader(){
             <div style="color:var(--muted);font-size:12px">⭐ ${user.karma} карма</div>
           </div>
           <div class="dd-item" onclick="closeDropdown();goProfile()"><span>👤</span> Профіль</div>
-          <div class="dd-item" onclick="closeDropdown();openModal('createPostOverlay')"><span>✏️</span> Створити пост</div>
+          <div class="dd-item" onclick="closeDropdown();openModal('createPostOverlay')"><span>➕</span> Створити пост</div>
           <div class="dd-item" onclick="closeDropdown();showToast('Незабаром 🛠️')"><span>⚙️</span> Налаштування</div>
           <div class="dd-divider"></div>
           <div class="dd-item danger" onclick="closeDropdown();doSignout()"><span>🚪</span> Вийти</div>
         </div>
       </div>`;
-    // Create post widget in right sidebar
-    cpw.innerHTML=`
+    if(cpw) cpw.innerHTML=`
       <div class="widget" style="margin-bottom:12px">
         <div class="widget-body" style="padding:14px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -101,7 +114,7 @@ function renderHeader(){
     ha.innerHTML=`
       <button class="btn btn-ghost" onclick="openModal('loginOverlay')">Вхід</button>
       <button class="btn btn-accent" onclick="openModal('registerOverlay')">Реєстрація</button>`;
-    cpw.innerHTML=''; // no widget for guests
+    if(cpw) cpw.innerHTML=''; 
   }
 }
 
@@ -113,7 +126,6 @@ function closeDropdown(){
   const dd=document.getElementById('avatarDropdown');
   if(dd) dd.classList.remove('open');
 }
-// Close dropdown on outside click
 document.addEventListener('click',e=>{
   if(!e.target.closest('.avatar-wrap')) closeDropdown();
 });
@@ -147,7 +159,7 @@ function doSignup(){
 }
 
 function doSignout(){
-  signout();renderHeader();renderFeed();setPage('home');showToast('Виконано вихід з аккаунту');
+  signout();renderHeader();renderFeed();setPage('home');showToast('До побачення!');
 }
 
 function requireAuth(){
@@ -225,8 +237,7 @@ function renderProfile(tab){
     </div>
 
     <div class="profile-layout">
-      <div></div><!-- left spacer, content above -->
-      <div>
+      <div></div><div>
         <div class="widget">
           <div class="widget-header">📊 Статистика</div>
           <div class="widget-body" style="padding:8px 14px">
@@ -279,7 +290,13 @@ function renderFeed(data){
 
 function postCard(p){
   const v=voteMap[p.id]||0;
-  const commentCount = postComments[p.id]?.length ?? p.comments;
+  const commentCount=postComments[p.id]?.length??p.comments;
+  const user=getCurrentUser();
+  const authorName=getAuthorName(p);
+  const canManage=user&&(user.id===p.authorId||user.isAdmin);
+  const manageBtns=canManage?`
+    <button class="action-btn" style="color:var(--blue)" onclick="event.stopPropagation();editPost(${p.id})">✏️ Редагувати</button>
+    <button class="action-btn" style="color:#ff7043" onclick="event.stopPropagation();confirmDeletePost(${p.id})">🗑️ Видалити</button>`:'';
   return`<div class="post-card" onclick="openPost(${p.id})">
     <div class="post-vote" onclick="event.stopPropagation()">
       <button class="vote-btn${v===1?' voted':''}" onclick="castVote(${p.id},1)">▲</button>
@@ -289,7 +306,7 @@ function postCard(p){
     <div class="post-body">
       <div class="post-meta">
         <div class="post-sub"><div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>${p.sub}</div>
-        <span class="post-author">Автор: <span>${p.author}</span></span>
+        <span class="post-author">Автор: <span>${authorName}</span></span>
         <span class="post-time">· ${p.time}</span>
         <span class="flair ${p.flairClass}">${p.flair}</span>
       </div>
@@ -298,24 +315,30 @@ function postCard(p){
         <button class="action-btn">💬 ${fmtNum(commentCount)}</button>
         <button class="action-btn" onclick="event.stopPropagation();sharePost(${p.id})">🔗 Поділитись</button>
         <button class="action-btn" onclick="event.stopPropagation();savePost(${p.id})">🔖 Зберегти</button>
+        ${manageBtns}
       </div>
     </div>
     <div class="post-thumb">${p.emoji}</div>
   </div>`;
 }
 
-// comments stored per post id
-const postComments = {};
-
 function openPost(id){
   const p = posts.find(x => x.id === id);
   if(!p) return;
   const v = voteMap[id] || 0;
   const auth = isAuthenticated();
+  const user = getCurrentUser();
   const comments = postComments[id] || [];
+  const authorName = getAuthorName(p);
+  const canManage = user && (user.id === p.authorId || user.isAdmin);
 
   document.getElementById('postViewContent').innerHTML = `
-    <div style="margin-bottom:12px"><button class="action-btn" onclick="setPage('home')">← Назад</button></div>
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <button class="action-btn" onclick="setPage('home')">← Назад</button>
+      ${canManage?`
+        <button class="action-btn" style="color:var(--blue);margin-left:auto" onclick="editPost(${p.id})">✏️ Редагувати</button>
+        <button class="action-btn" style="color:#ff7043" onclick="confirmDeletePost(${p.id})">🗑️ Видалити</button>`:''}
+    </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
       <div style="display:flex">
         <div class="post-vote" style="padding:16px 0">
@@ -326,12 +349,13 @@ function openPost(id){
         <div style="padding:16px;flex:1">
           <div class="post-meta" style="margin-bottom:10px">
             <div class="post-sub"><div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>${p.sub}</div>
-            <span class="post-author">Автор: <span>${p.author}</span></span>
+            <span class="post-author">Автор: <span>${authorName}</span></span>
             <span class="post-time">· ${p.time}</span>
+            <span class="flair ${p.flairClass}">${p.flair}</span>
           </div>
           <div class="post-title" style="font-size:1.3rem;margin-bottom:12px">${p.title}</div>
           <div style="font-size:40px;text-align:center;background:var(--surface2);border-radius:8px;padding:24px;margin-bottom:12px">${p.emoji}</div>
-          ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${p.body}</p>` : ''}
+          ${p.body?`<p style="line-height:1.7;margin-bottom:14px">${p.body}</p>`:''}
           <div class="post-actions">
             <button class="action-btn">💬 ${comments.length}</button>
             <button class="action-btn" onclick="sharePost(${p.id})">🔗 Поділитись</button>
@@ -341,25 +365,25 @@ function openPost(id){
       </div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px" id="commentsSection">
-      <div style="font-weight:700;margin-bottom:12px">💬 Коментарі (${comments.length})</div>
+      <div style="font-weight:700;margin-bottom:12px" id="commentsHeader">💬 Коментарі (${comments.length})</div>
       ${auth
-        ? `<div style="display:flex;gap:10px;margin-bottom:16px">
-             <div class="user-avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${getCurrentUser().name.slice(0,2).toUpperCase()}</div>
+        ?`<div style="display:flex;gap:10px;margin-bottom:16px">
+             <div class="user-avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${user.name.slice(0,2).toUpperCase()}</div>
              <div style="flex:1">
                <textarea id="commentBox" placeholder="Напишіть коментар…" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px;resize:vertical;min-height:72px;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"></textarea>
                <div style="text-align:right;margin-top:6px"><button class="btn btn-accent" style="border-radius:8px;padding:6px 18px" onclick="postComment(${p.id})">Надіслати</button></div>
              </div>
            </div>`
-        : `<div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;color:var(--muted);margin-bottom:16px">
+        :`<div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;color:var(--muted);margin-bottom:16px">
              <a style="color:var(--blue);cursor:pointer" onclick="openModal('loginOverlay')">Увійдіть</a>, щоб залишити коментар
            </div>`}
       <div id="commentsList">
-        ${comments.length === 0
-          ? `<div style="text-align:center;padding:32px 0;color:var(--muted)">
+        ${comments.length===0
+          ?`<div style="text-align:center;padding:32px 0;color:var(--muted)">
                <div style="font-size:36px;margin-bottom:8px">💬</div>
-               <div style="font-size:14px">Коментарів ще немає. Будьте першим!</div>
+               <div>Коментарів ще немає. Будьте першим!</div>
              </div>`
-          : comments.map(c => renderComment(c)).join('')}
+          :comments.map(c=>renderComment(c)).join('')}
       </div>
     </div>`;
   setPage('post');
@@ -391,15 +415,12 @@ function postComment(postId){
   };
   if(!postComments[postId]) postComments[postId] = [];
   postComments[postId].push(comment);
-  // update post comment count
   const p = posts.find(x => x.id === postId);
   if(p) p.comments = postComments[postId].length;
-  // bump karma
   user.karma = (user.karma||1) + 1;
   user.contributions = (user.contributions||0) + 1;
   updateStoredUser(user);
   box.value = '';
-  // re-render comments section live
   const list = document.getElementById('commentsList');
   const header = document.querySelector('#commentsSection div');
   if(header) header.textContent = `💬 Коментарі (${postComments[postId].length})`;
@@ -472,12 +493,11 @@ document.addEventListener('keydown',e=>{
     if(document.getElementById('loginOverlay').classList.contains('open'))doSignin();
     if(document.getElementById('registerOverlay').classList.contains('open'))doSignup();
   }
-  if(e.key==='Escape'){closeModal('loginOverlay');closeModal('registerOverlay');}
+  if(e.key==='Escape'){closeModal('loginOverlay');closeModal('registerOverlay');closeModal('deleteConfirmOverlay');}
 });
 
 // ═══════════════════════════ CREATE POST ═══════════════════════════
 
-// live title counter
 document.addEventListener('input', e => {
   if(e.target.id==='postTitle'){
     const c=document.getElementById('titleCount');
@@ -485,78 +505,160 @@ document.addEventListener('input', e => {
   }
 });
 
-
-function submitPost() {
-  const title = document.getElementById('postTitle').value.trim();
-  const body = document.getElementById('postBody').value.trim();
-  const cat = document.getElementById('postCategory').value;
-
-  if (!title) {
-    showToast('Введіть заголовок!', 'error');
-    return;
-  }
-
-  const user = getCurrentUser();
+function submitPost(){
+  const title=document.getElementById('postTitle').value.trim();
+  const body=document.getElementById('postBody').value.trim();
+  const cat=document.getElementById('postCategory').value;
+  if(!title){showToast('Введіть заголовок!','error');return;}
   
-  // Беремо налаштування з нашого JSON об'єкта
-  const config = categoryConfig[cat] || {
-    emoji: '📝',
-    color: '#ff4500',
-    flair: ['Пост', 'flair-tech']
-  };
+  const user=getCurrentUser();
+  const config = categoryConfig[cat] || { emoji: '📝', color: '#ff4500', flair: ['Пост', 'flair-tech'] };
 
-  const newPost = {
+  const newPost={
     id: Date.now(),
+    authorId: user.id,
+    authorName: user.name,
     sub: cat,
     subColor: config.color,
-    author: user.name,
     time: 'щойно',
     flair: config.flair[0],
     flairClass: config.flair[1],
-    title: title,
-    body: body || '',
+    title, body: body||'',
     emoji: config.emoji,
-    votes: 1,
-    comments: 0
+    votes: 1, comments: 0
   };
-
   posts.unshift(newPost);
-  
-  // Оновлення карми
-  user.karma = (user.karma || 1) + 5;
-  user.contributions = (user.contributions || 0) + 1;
-  if (!user.posts) user.posts = [];
+  savePosts(posts);
+  user.karma=(user.karma||1)+5;
+  user.contributions=(user.contributions||0)+1;
+  if(!user.posts) user.posts=[];
   user.posts.push(newPost.id);
-  
   updateStoredUser(user);
-  
-  // Очищення форми та закриття
-  document.getElementById('postTitle').value = '';
-  document.getElementById('postBody').value = '';
+  document.getElementById('postTitle').value='';
+  document.getElementById('postBody').value='';
+  const c=document.getElementById('titleCount');
+  if(c) c.textContent='0 / 200';
   closeModal('createPostOverlay');
-  
   renderHeader();
   renderFeed();
-  showToast('✅ Пост опубліковано! +5 карми', 'success');
+  showToast('✅ Пост опубліковано! +5 карми','success');
 }
 
-init();
+// ═══════════════════════════ EDIT POST ═══════════════════════════
+
+function editPost(id){
+  const p=posts.find(x=>x.id===id);
+  if(!p) return;
+  const pv=document.getElementById('postViewContent');
+  if(!pv){
+    openPost(id);
+    setTimeout(()=>editPost(id),50);
+    return;
+  }
+  setPage('post');
+  
+  const optionsHTML = Object.keys(categoryConfig).map(c => 
+      `<option value="${c}" ${p.sub===c?'selected':''}>${categoryConfig[c].emoji} ${c}</option>`
+  ).join('');
+
+  pv.innerHTML=`
+    <div style="margin-bottom:12px"><button class="action-btn" onclick="openPost(${id})">← Скасувати</button></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px">
+      <h2 style="font-family:var(--font-head);font-size:1.2rem;margin-bottom:20px">✏️ Редагування поста</h2>
+      <div class="form-field">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Категорія</label>
+        <select id="editCategory" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px 12px;border-radius:8px;outline:none">
+          ${optionsHTML}
+        </select>
+      </div>
+      <div class="form-field" style="margin-top:14px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Заголовок</label>
+        <input id="editTitle" type="text" maxlength="200" value="${p.title.replace(/"/g,'&quot;')}"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px 12px;border-radius:8px;outline:none;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"/>
+      </div>
+      <div class="form-field" style="margin-top:14px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Текст</label>
+        <textarea id="editBody" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px 12px;border-radius:8px;outline:none;resize:vertical;min-height:140px;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">${p.body||''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-ghost" style="border-radius:8px" onclick="openPost(${id})">Скасувати</button>
+        <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="saveEditPost(${id})">Зберегти зміни</button>
+      </div>
+    </div>`;
+}
+
+function saveEditPost(id){
+  const title=document.getElementById('editTitle')?.value.trim();
+  const body=document.getElementById('editBody')?.value.trim();
+  const cat=document.getElementById('editCategory')?.value;
+  if(!title){showToast('Заголовок не може бути порожнім!','error');return;}
+  const idx=posts.findIndex(x=>x.id===id);
+  if(idx<0) return;
+
+  const config = categoryConfig[cat] || { emoji: '📝', color: '#ff4500', flair: ['Пост', 'flair-tech'] };
+
+  posts[idx]={
+    ...posts[idx],
+    title, body: body||'',
+    sub: cat,
+    subColor: config.color,
+    flair: config.flair[0],
+    flairClass: config.flair[1],
+    emoji: config.emoji,
+    edited: true
+  };
+  savePosts(posts);
+  renderFeed();
+  showToast('✅ Пост оновлено!','success');
+  openPost(id);
+}
+
+// ═══════════════════════════ DELETE POST ═══════════════════════════
+
+let _pendingDeleteId = null;
+
+function confirmDeletePost(id){
+  _pendingDeleteId=id;
+  openModal('deleteConfirmOverlay');
+}
+
+function deletePost(){
+  const id=_pendingDeleteId;
+  if(id==null) return;
+  const idx=posts.findIndex(x=>x.id===id);
+  if(idx>=0){ posts.splice(idx,1); savePosts(posts); }
+  closeModal('deleteConfirmOverlay');
+  _pendingDeleteId=null;
+  if(document.getElementById('page-post').classList.contains('active')) setPage('home');
+  renderFeed();
+  showToast('🗑️ Пост видалено','error');
+}
 
 // ═══════════════════════════ INIT ═══════════════════════════
+
 async function init() {
   try {
-    // Завантажуємо пости та конфігурацію паралельно
     const [postsRes, configRes] = await Promise.all([
       fetch('data/posts.json'),
       fetch('data/categories.json')
     ]);
 
-    posts = await postsRes.json();
+    const initialPosts = await postsRes.json();
     categoryConfig = await configRes.json();
+
+    const stored = JSON.parse(localStorage.getItem('goat_posts'));
+    posts = (stored && stored.length) ? stored : initialPosts;
 
     renderHeader();
     renderFeed();
-  } catch (err) {
-    console.error("Помилка завантаження даних:", err);
+  } catch (error) {
+    console.error('Error loading data:', error);
+    // Якщо не завантажилось (наприклад, не запущено локальний сервер), інтерфейс все одно відмалюється
+    renderHeader();
+    renderFeed();
   }
 }
+
+init();

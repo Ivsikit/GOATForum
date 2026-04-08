@@ -1,6 +1,7 @@
 [
   {
     "id": 1,
+    "authorId":null,
     "sub": "r/GlobalOffensive",
     "subColor": "#ff4500",
     "author": "ZywOo_fan",
@@ -15,6 +16,7 @@
   },
   {
     "id": 2,
+    "authorId":null,
     "sub": "r/технології",
     "subColor": "#58a6ff",
     "author": "dev_maks",
@@ -29,6 +31,7 @@
   },
   {
     "id": 3,
+    "authorId":null,
     "sub": "r/навчання",
     "subColor": "#3fb950",
     "author": "study_olya",
@@ -43,6 +46,7 @@
   },
   {
     "id": 4,
+    "authorId":null,
     "sub": "r/спорт",
     "subColor": "#fb8c00",
     "author": "footbal_ivan",
@@ -57,6 +61,7 @@
   },
   {
     "id": 5,
+    "authorId":null,
     "sub": "r/фільми",
     "subColor": "#ab47bc",
     "author": "kino_luda",
