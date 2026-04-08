@@ -51,6 +51,9 @@ function updateStoredUser(user){
 
 let posts = [];
 let categoryConfig = {};
+let currentPostId = null;
+const voteMap={};
+const postComments={};
 
 function savePosts(list){ localStorage.setItem('goat_posts',JSON.stringify(list)); }
 
@@ -61,9 +64,6 @@ function getAuthorName(post){
   }
   return post.authorName||'Невідомий';
 }
-
-const voteMap={};
-const postComments={};
 
 // ═══════════════════════════ HEADER UI ═══════════════════════════
 
@@ -140,7 +140,12 @@ function doSignin(){
   if(!result.success){err.textContent=result.message;err.classList.add('show');return;}
   err.classList.remove('show');
   closeModal('loginOverlay');
-  renderHeader();renderFeed();
+  renderHeader();
+  if (document.getElementById('page-post').classList.contains('active') && currentPostId !== null) {
+    openPost(currentPostId); // Перемальовуємо пост (тепер з формою коментаря)
+  } else {
+    renderFeed();
+  }
   showToast('✅ Ласкаво просимо, '+result.user.name+'!','success');
 }
 
@@ -154,7 +159,12 @@ function doSignup(){
   if(!result.success){err.textContent=result.message;err.classList.add('show');return;}
   err.classList.remove('show');
   closeModal('registerOverlay');
-  renderHeader();renderFeed();
+  renderHeader();
+  if (document.getElementById('page-post').classList.contains('active') && currentPostId !== null) {
+    openPost(currentPostId);
+  } else {
+    renderFeed();
+  }
   showToast('✅ Акаунт створено! Ласкаво просимо, '+name+'!','success');
 }
 
@@ -323,6 +333,7 @@ function postCard(p){
 }
 
 function openPost(id){
+  currentPostId = id;
   const p = posts.find(x => x.id === id);
   if(!p) return;
   const v = voteMap[id] || 0;
@@ -462,6 +473,7 @@ function setSort(btn,type){
 // ═══════════════════════════ PAGES ═══════════════════════════
 
 function setPage(name){
+  if(name === 'home') currentPostId = null;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   (document.getElementById('page-'+name)||document.getElementById('page-home')).classList.add('active');
   window.scrollTo(0,0);
