@@ -20,7 +20,7 @@
   <div class="header-actions" id="headerActions"></div>
 </header>
 
-<div class="layout">
+<div class="layout" id="mainLayout">
   <aside class="sidebar-left">
     <div class="nav-section">
       <div class="nav-item active" onclick="setPage('home')"><span class="nav-icon">🏠</span>Головна</div>
@@ -31,10 +31,7 @@
     <div class="nav-divider"></div>
     <div class="nav-section">
       <div class="nav-section-title">Спільноти</div>
-      <div class="nav-item"><div class="community-avatar">Іг</div>r/ігри</div>
-      <div class="nav-item"><div class="community-avatar blue">Тех</div>r/технології</div>
-      <div class="nav-item"><div class="community-avatar green">Сп</div>r/спорт</div>
-      <div class="nav-item"><div class="community-avatar purple">Фл</div>r/фільми</div>
+      <div id="sidebarCommunities"></div>
     </div>
     <div class="nav-divider"></div>
     <div class="nav-section" style="padding-bottom:16px">
@@ -43,14 +40,8 @@
   </aside>
 
   <main>
-    <!-- HOME -->
     <div id="page-home" class="page active">
-      <div class="featured-row">
-        <div class="featured-card" onclick="openPost(0)"><div class="featured-img">🎮</div><div class="featured-card-body"><div class="featured-card-title">CS2 Major Антверп 2026</div><div class="featured-card-sub"><div class="sub-dot">r</div>r/GlobalOffensive та інші</div></div></div>
-        <div class="featured-card" onclick="openPost(1)"><div class="featured-img red">🗳️</div><div class="featured-card-body"><div class="featured-card-title">Вибори в Польщі 2026</div><div class="featured-card-sub"><div class="sub-dot" style="background:#1565c0">r</div>r/новини та інші</div></div></div>
-        <div class="featured-card" onclick="openPost(2)"><div class="featured-img green">💻</div><div class="featured-card-body"><div class="featured-card-title">React 20 — нові хуки</div><div class="featured-card-sub"><div class="sub-dot" style="background:#43a047">r</div>r/webdev та інші</div></div></div>
-        <div class="featured-card" onclick="openPost(3)"><div class="featured-img orange">⚽</div><div class="featured-card-body"><div class="featured-card-title">Ліга чемпіонів фінал</div><div class="featured-card-sub"><div class="sub-dot" style="background:#fb8c00">r</div>r/спорт та інші</div></div></div>
-      </div>
+      <div class="featured-row" id="featuredRow"></div>
       <div class="sort-bar">
         <button class="sort-btn active" onclick="setSort(this,'best')">⭐ Найкращі</button>
         <button class="sort-btn" onclick="setSort(this,'hot')">🔥 Гарячі</button>
@@ -59,11 +50,7 @@
       </div>
       <div id="postFeed"></div>
     </div>
-
-    <!-- POST VIEW -->
     <div id="page-post" class="page"><div id="postViewContent"></div></div>
-
-    <!-- PROFILE -->
     <div id="page-profile" class="page"><div id="profileContent"></div></div>
   </main>
 
@@ -71,12 +58,7 @@
     <div id="createPostWidget"></div>
     <div class="widget">
       <div class="widget-header">Популярні спільноти</div>
-      <div class="widget-body" style="padding:8px 14px">
-        <div class="community-row"><div class="community-num">1</div><div class="community-avatar" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/технології</div><div class="community-members">2.3M · <span class="community-trend">▲ 15%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
-        <div class="community-row"><div class="community-num">2</div><div class="community-avatar blue" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/навчання</div><div class="community-members">1.8M · <span class="community-trend">▲ 8%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
-        <div class="community-row"><div class="community-num">3</div><div class="community-avatar green" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/спорт</div><div class="community-members">980K · <span class="community-trend">▲ 22%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
-        <div class="community-row"><div class="community-num">4</div><div class="community-avatar purple" style="width:24px;height:24px;font-size:11px">r/</div><div class="community-info"><div class="community-name">r/фільми</div><div class="community-members">734K · <span class="community-trend">▲ 5%</span></div></div><button class="join-btn" onclick="toggleJoin(this)">Приєднатись</button></div>
-      </div>
+      <div class="widget-body" style="padding:8px 14px" id="rightSidebarCommunities"></div>
     </div>
     <div class="widget">
       <div class="widget-header">Правила форуму</div>
@@ -91,21 +73,140 @@
   </aside>
 </div>
 
+<!-- ADMIN PANEL (full page) -->
+<div id="adminPanel" style="display:none;margin-top:var(--header)">
+  <div class="admin-layout">
+    <div class="admin-sidebar">
+      <div class="admin-sidebar-title">⚙️ Адмін панель</div>
+      <div class="admin-nav">
+        <div class="admin-nav-item active" onclick="switchAdminTab('dashboard')" id="atab-dashboard">📊 Дашборд</div>
+        <div class="admin-nav-item" onclick="switchAdminTab('categories')" id="atab-categories">🗂️ Категорії</div>
+        <div class="admin-nav-item" onclick="switchAdminTab('users')" id="atab-users">👥 Користувачі</div>
+        <div class="admin-nav-item" onclick="switchAdminTab('posts')" id="atab-posts">📝 Пости</div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="admin-nav-item" onclick="setPage('home');document.getElementById('adminPanel').style.display='none';document.getElementById('mainLayout').style.display=''">
+          ← Повернутись на форум
+        </div>
+      </div>
+    </div>
+    <div class="admin-content">
+      <!-- DASHBOARD -->
+      <div id="admin-dashboard" class="admin-page active">
+        <div class="admin-header">
+          <div class="admin-title">Дашборд</div>
+          <div class="admin-badge-pill">⚙️ Адміністратор</div>
+        </div>
+        <div class="stat-cards" id="adminStatCards"></div>
+        <div style="font-family:var(--font-head);font-size:1rem;font-weight:700;margin-bottom:12px">Останні пости</div>
+        <div id="adminRecentPosts"></div>
+      </div>
+
+      <!-- CATEGORIES -->
+      <div id="admin-categories" class="admin-page">
+        <div class="admin-header">
+          <div class="admin-title">Управління категоріями</div>
+          <button class="btn btn-admin" onclick="showCatForm()">+ Нова категорія</button>
+        </div>
+        <div id="catFormWrap" style="display:none">
+          <div class="admin-form">
+            <h3 id="catFormTitle">➕ Нова категорія</h3>
+            <input type="hidden" id="catEditKey"/>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Назва (slug, напр. r/назва)</label>
+                <input type="text" id="catName" placeholder="r/назва"/>
+              </div>
+              <div class="form-field">
+                <label>Emoji</label>
+                <input type="text" id="catEmoji" placeholder="🎮" maxlength="4"/>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Опис</label>
+              <input type="text" id="catDesc" placeholder="Короткий опис категорії"/>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Колір (hex)</label>
+                <input type="text" id="catColor" placeholder="#ff4500"/>
+              </div>
+              <div class="form-field">
+                <label>Flair клас</label>
+                <select id="catFlair">
+                  <option value="flair-cs">flair-cs (помаранчевий)</option>
+                  <option value="flair-tech">flair-tech (синій)</option>
+                  <option value="flair-news">flair-news (зелений)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-accent" style="border-radius:8px" onclick="saveCat()">Зберегти</button>
+              <button class="btn btn-ghost" style="border-radius:8px" onclick="hideCatForm()">Скасувати</button>
+            </div>
+          </div>
+        </div>
+        <div class="cat-grid" id="adminCatGrid"></div>
+      </div>
+
+      <!-- USERS -->
+      <div id="admin-users" class="admin-page">
+        <div class="admin-header">
+          <div class="admin-title">Користувачі</div>
+          <div style="font-size:13px;color:var(--muted)" id="userCount"></div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Ім'я</th>
+                <th>Email</th>
+                <th>Роль</th>
+                <th>Карма</th>
+                <th>Зареєстрований</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- POSTS -->
+      <div id="admin-posts" class="admin-page">
+        <div class="admin-header">
+          <div class="admin-title">Всі пости</div>
+          <div style="font-size:13px;color:var(--muted)" id="postsCount"></div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Заголовок</th>
+                <th>Категорія</th>
+                <th>Автор</th>
+                <th>Голоси</th>
+                <th>Коментарі</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="postsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- CREATE POST MODAL -->
 <div class="overlay" id="createPostOverlay" onclick="closeIfOverlay(event,'createPostOverlay')">
   <div class="modal" style="max-width:540px">
     <button class="modal-close" onclick="closeModal('createPostOverlay')">✕</button>
-    <h2> Новий пост</h2>
+    <h2>✏️ Новий пост</h2>
     <p>Опублікуйте щось цікаве для спільноти</p>
     <div class="form-field">
       <label>Категорія</label>
-      <select id="postCategory">
-        <option value="r/ігри">🎮 r/ігри</option>
-        <option value="r/технології">💻 r/технології</option>
-        <option value="r/навчання">📚 r/навчання</option>
-        <option value="r/спорт">⚽ r/спорт</option>
-        <option value="r/фільми">🎬 r/фільми</option>
-      </select>
+      <select id="postCategory"></select>
     </div>
     <div class="form-field">
       <label>Заголовок</label>
@@ -119,6 +220,32 @@
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost" style="border-radius:8px" onclick="closeModal('createPostOverlay')">Скасувати</button>
       <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="submitPost()">Опублікувати</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE POST CONFIRM -->
+<div class="overlay" id="deleteConfirmOverlay" onclick="closeIfOverlay(event,'deleteConfirmOverlay')">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">🗑️</div>
+    <h2 style="margin-bottom:8px">Видалити пост?</h2>
+    <p style="margin-bottom:24px">Цю дію неможливо скасувати. Пост буде видалено назавжди.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-ghost" style="border-radius:8px;padding:9px 24px" onclick="closeModal('deleteConfirmOverlay')">Скасувати</button>
+      <button class="btn btn-accent" style="border-radius:8px;padding:9px 24px;background:#c0392b" onclick="deletePost()">Так, видалити</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CAT CONFIRM -->
+<div class="overlay" id="deleteCatOverlay" onclick="closeIfOverlay(event,'deleteCatOverlay')">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">🗂️</div>
+    <h2 style="margin-bottom:8px">Видалити категорію?</h2>
+    <p id="deleteCatMsg" style="margin-bottom:24px">Цю дію неможливо скасувати.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-ghost" style="border-radius:8px;padding:9px 24px" onclick="closeModal('deleteCatOverlay')">Скасувати</button>
+      <button class="btn btn-accent" style="border-radius:8px;padding:9px 24px;background:#c0392b" id="deleteCatConfirmBtn" onclick="deleteCatConfirmed()">Так, видалити</button>
     </div>
   </div>
 </div>
@@ -138,7 +265,7 @@
   </div>
 </div>
 
-<!-- REGISTER MODAL -->
+<!-- REGISTER MODAL (no admin role) -->
 <div class="overlay" id="registerOverlay" onclick="closeIfOverlay(event,'registerOverlay')">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('registerOverlay')">✕</button>
@@ -148,29 +275,12 @@
     <div class="form-field"><label>Ім'я</label><input type="text" id="regName" placeholder="Ваше ім'я"/></div>
     <div class="form-field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"/></div>
     <div class="form-field"><label>Пароль</label><input type="password" id="regPassword" placeholder="••••••••"/></div>
-    <div class="form-field">
-      <label>Роль</label>
-      <select id="regRole">
-        <option value="user">Користувач</option>
-        <option value="admin">Адмін</option>
-      </select>
-    </div>
     <button class="btn btn-accent" style="width:100%;padding:10px;border-radius:8px;font-size:15px;font-weight:600" onclick="doSignup()">Створити акаунт</button>
     <div class="modal-footer" style="margin-top:14px">Вже є акаунт? <a onclick="switchToLogin()">Увійти</a></div>
   </div>
 </div>
-<div class="overlay" id="deleteConfirmOverlay" onclick="closeIfOverlay(event,'deleteConfirmOverlay')">
-  <div class="modal" style="max-width:340px; text-align:center;">
-    <button class="modal-close" onclick="closeModal('deleteConfirmOverlay')">✕</button>
-    <div style="font-size:40px; margin-bottom:10px;">🗑️</div>
-    <h2 style="margin-bottom:10px;">Видалити пост?</h2>
-    <p style="margin-bottom:20px; color:var(--muted);">Цю дію неможливо буде скасувати.</p>
-    <div style="display:flex; gap:10px; justify-content:center;">
-      <button class="btn btn-ghost" style="border-radius:8px; flex:1;" onclick="closeModal('deleteConfirmOverlay')">Скасувати</button>
-      <button class="btn btn-accent" style="border-radius:8px; flex:1; background:#ff4500;" onclick="deletePost()">Видалити</button>
-    </div>
-  </div>
-</div>
+
+<div class="toast" id="toast"></div>
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
 </body>
