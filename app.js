@@ -814,7 +814,7 @@ function handleSearch(q){
   renderFeed(f);
   if(document.getElementById('page-post').classList.contains('active')) setPage('home');
 }
-
+ 
 function setSort(btn, type){
   document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
