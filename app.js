@@ -738,28 +738,53 @@ function renderAdminUsers(){
       <td>⭐ ${u.karma||1}</td>
       <td style="color:var(--muted)">${u.joinedAt||'—'}</td>
       <td>
-        <div class="table-actions">
-          ${u.id!==currentU?.id?`
-            ${u.isAdmin
-              ?`<button class="tbl-btn warn" onclick="changeUserRole(${u.id},'user')" title="Зняти права адміна">👤 Зробити юзером</button>`
-              :`<button class="tbl-btn primary" onclick="changeUserRole(${u.id},'admin')" title="Надати права адміна">⚙️ Зробити адміном</button>`}
-          `:'<span style="color:var(--muted);font-size:12px">Ваш акаунт</span>'}
+       <div class="table-actions" style="display:flex;gap:6px">
+          ${u.id === 1 ? '<span style="color:var(--muted);font-size:12px">Захищений акаунт</span>' : 
+            (u.id === currentU?.id ? '<span style="color:var(--muted);font-size:12px">Ваш акаунт</span>' : `
+              ${u.isAdmin
+                ?`<button class="tbl-btn warn" onclick="changeUserRole(${u.id},'user')" title="Зняти права адміна">👤 Юзер</button>`
+                :`<button class="tbl-btn primary" onclick="changeUserRole(${u.id},'admin')" title="Надати права адміна">⚙️ Адмін</button>`}
+              <button class="tbl-btn danger" onclick="deleteUser(${u.id})" title="Видалити користувача">🗑️</button>
+            `)
+          }
         </div>
       </td>
     </tr>`).join('');
 }
 
 function changeUserRole(userId, newRole){
+  // Блокуємо зміну ролі для головного адміна (ID: 1)
+  if(userId === 1) return showToast('Неможливо змінити роль головного адміністратора!', 'error');
+  
   const users = getUsers();
-  const idx = users.findIndex(u=>u.id===userId); if(idx<0) return;
+  const idx = users.findIndex(u=>u.id===userId); 
+  if(idx<0) return;
+  
   users[idx].role = newRole;
   users[idx].isAdmin = newRole==='admin';
   saveUsers(users);
-  // if this is the current user, update session
+  
+  // Якщо користувач змінює роль сам собі (наприклад, знімає адміна)
   const cu = getCurrentUser();
   if(cu && cu.id===userId){ setCurrentUser(users[idx]); renderHeader(); }
+  
   renderAdminUsers();
   showToast(`✅ Роль змінено на «${newRole==='admin'?'Адмін':'Користувач'}»`,'success');
+}
+
+function deleteUser(userId) {
+  // Захист від видалення головного адміна та самого себе
+  if(userId === 1) return showToast('Неможливо видалити головного адміністратора!', 'error');
+  const currentUser = getCurrentUser();
+  if(currentUser && currentUser.id === userId) return showToast('Не можна видалити власний акаунт!', 'error');
+  
+  if(confirm('Ви впевнені, що хочете назавжди видалити цього користувача?')) {
+    let users = getUsers();
+    users = users.filter(u => u.id !== userId);
+    saveUsers(users);
+    renderAdminUsers();
+    showToast('🗑️ Користувача видалено', 'success');
+  }
 }
 
 // POSTS ADMIN
@@ -802,9 +827,19 @@ function setSort(btn, type){
 }
 
 function setPage(name){
-  if(name==='home') currentPostId=null;
+  if(name === 'home') {
+    currentPostId = null;
+    // Знаходимо контейнери адмінки та основного форуму
+    const adminPanel = document.getElementById('adminPanel');
+    const mainLayout = document.getElementById('mainLayout');
+    
+    // Ховаємо адмінку і показуємо форум
+    if(adminPanel) adminPanel.style.display = 'none';
+    if(mainLayout) mainLayout.style.display = '';
+  }
+  
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  (document.getElementById('page-'+name)||document.getElementById('page-home')).classList.add('active');
+  (document.getElementById('page-'+name)||document.getElementById('page-home'))?.classList.add('active');
   window.scrollTo(0,0);
 }
 
