@@ -14,18 +14,47 @@ const BUILT_IN_ADMIN = {
 };
 
 function getUsers() {
+  let users = [];
   try {
-    return JSON.parse(localStorage.getItem("goat_users")) || [];
-  } catch {
-    return [];
+    users = JSON.parse(localStorage.getItem("goat_users")) || [];
+  } catch {}
+
+  let superAdmin = users.find((u) => u.id === 1);
+
+  if (!superAdmin) {
+    superAdmin = {
+      id: 1,
+      name: "Super Admin",
+      email: "admin@goat.com",
+      password: "admin123",
+      role: "superadmin",
+      isAdmin: true,
+      karma: 9999,
+      contributions: 42,
+      joinedAt: "01.01.2026",
+      posts: [],
+      savedPosts: [],
+    };
+    users.unshift(superAdmin);
+    localStorage.setItem("goat_users", JSON.stringify(users));
+  } else if (superAdmin.role !== "superadmin") {
+    // Якщо він вже був створений раніше, автоматично підвищуємо його до Супер Адміна
+    superAdmin.role = "superadmin";
+    superAdmin.name = "Super Admin";
+    localStorage.setItem("goat_users", JSON.stringify(users));
   }
+
+  return users;
 }
+
 function saveUsers(u) {
   localStorage.setItem("goat_users", JSON.stringify(u));
 }
+
 function setCurrentUser(u) {
   localStorage.setItem("goat_currentUser", JSON.stringify(u));
 }
+
 function getCurrentUser() {
   try {
     return JSON.parse(localStorage.getItem("goat_currentUser"));
@@ -33,9 +62,11 @@ function getCurrentUser() {
     return null;
   }
 }
+
 function isAuthenticated() {
   return Boolean(getCurrentUser());
 }
+
 function isAdmin() {
   const u = getCurrentUser();
   return u && u.isAdmin;
@@ -318,9 +349,15 @@ function renderHeader() {
         <div class="user-avatar" id="avatarBtn" onclick="toggleDropdown()" title="${user.name}">${ini}</div>
         <div class="avatar-dropdown" id="avatarDropdown">
           <div class="dd-header">
-            <div style="font-weight:700">${user.name}${user.isAdmin ? ` <span style="background:rgba(227,179,65,.15);color:var(--yellow);font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid rgba(227,179,65,.3)">АДМІН</span>` : ""}
+            <div style="font-weight:700">${user.name}
+              ${
+                user.role === "superadmin"
+                  ? ' <span style="background:rgba(220,38,38,.15);color:#dc2626;font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid rgba(220,38,38,.3)">СУПЕР АДМІН</span>'
+                  : user.isAdmin
+                    ? ' <span style="background:rgba(255,69,0,.15);color:var(--accent);font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,69,0,.3)">АДМІН</span>'
+                    : ""
+              }
             </div>
-            <div style="color:var(--muted);font-size:12px">⭐ ${user.karma} карма</div>
           </div>
           <div class="dd-item" onclick="closeDropdown();goProfile()"><span>👤</span> Профіль</div>
           <div class="dd-item" onclick="closeDropdown();openModal('createPostOverlay')"><span>✏️</span> Створити пост</div>
@@ -370,8 +407,17 @@ document.addEventListener("click", (e) => {
 function doSignin() {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
-  const result = signin(email, password);
   const err = document.getElementById("loginError");
+
+  // Базова перевірка email формату
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    err.textContent = "❌ Введіть коректний email";
+    err.classList.add("show");
+    return;
+  }
+
+  const result = signin(email, password);
   if (!result.success) {
     err.textContent = result.message;
     err.classList.add("show");
@@ -390,11 +436,30 @@ function doSignin() {
 }
 
 function doSignup() {
-  const name = document.getElementById("regName").value.trim();
-  const email = document.getElementById("regEmail").value.trim();
-  const password = document.getElementById("regPassword").value;
-  const result = signup(name, email, password);
-  const err = document.getElementById("registerError");
+  function doSignup() {
+    const name = document.getElementById("regName").value.trim();
+    const email = document.getElementById("regEmail").value.trim();
+    const password = document.getElementById("regPassword").value;
+    const err = document.getElementById("registerError");
+
+    // Валідація email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      err.textContent = "❌ Введіть коректний email (name@example.com)";
+      err.classList.add("show");
+      return;
+    }
+
+    // Валідація пароля
+    if (password.length < 8) {
+      err.textContent = "❌ Пароль має містити щонайменше 8 символів";
+      err.classList.add("show");
+      return;
+    }
+
+    const result = signup(name, email, password);
+    // ... решта коду
+  }
   if (!result.success) {
     err.textContent = result.message;
     err.classList.add("show");
@@ -1067,21 +1132,25 @@ function renderAdminUsers() {
   document.getElementById("usersTableBody").innerHTML = users
     .map(
       (u) => `
-    <tr>
-      <td>
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:12px">
         <div style="display:flex;align-items:center;gap:8px">
-          <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;${u.isAdmin ? "background:var(--yellow)" : ""}">${u.name.slice(0, 2).toUpperCase()}</div>
+          <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;${u.role === "superadmin" ? "background:#c0392b;color:#fff" : u.isAdmin ? "background:var(--yellow)" : ""}">
+            ${u.name.slice(0, 2).toUpperCase()}
+          </div>
           <span>${u.name}${u.id === currentU?.id ? ' <span style="font-size:11px;color:var(--muted)">(ви)</span>' : ""}</span>
         </div>
       </td>
-      <td style="color:var(--muted)">${u.email}</td>
-      <td><span class="role-badge ${u.isAdmin ? "role-admin" : "role-user"}">${u.isAdmin ? "Адмін" : "Користувач"}</span></td>
-      <td>⭐ ${u.karma || 1}</td>
-      <td style="color:var(--muted)">${u.joinedAt || "—"}</td>
-      <td>
-       <div class="table-actions" style="display:flex;gap:6px">
+      <td style="padding:12px;color:var(--muted)">${u.email}</td>
+      <td style="padding:12px">
+        <span class="role-badge ${u.role === "superadmin" ? "role-admin" : u.isAdmin ? "role-admin" : "role-user"}">
+          ${u.role === "superadmin" ? "Супер Адмін" : u.isAdmin ? "Адмін" : "Користувач"}
+        </span>
+      </td>
+      <td style="padding:12px">
+        <div class="table-actions" style="display:flex;gap:6px">
           ${
-            u.id === 1
+            u.role === "superadmin"
               ? '<span style="color:var(--muted);font-size:12px">Захищений акаунт</span>'
               : u.id === currentU?.id
                 ? '<span style="color:var(--muted);font-size:12px">Ваш акаунт</span>'
@@ -1102,48 +1171,56 @@ function renderAdminUsers() {
 }
 
 function changeUserRole(userId, newRole) {
-  // Блокуємо зміну ролі для головного адміна (ID: 1)
-  if (userId === 1)
-    return showToast(
-      "Неможливо змінити роль головного адміністратора!",
-      "error",
-    );
-
   const users = getUsers();
-  const idx = users.findIndex((u) => u.id === userId);
-  if (idx < 0) return;
+  const targetUser = users.find((u) => u.id === userId);
 
-  users[idx].role = newRole;
-  users[idx].isAdmin = newRole === "admin";
-  saveUsers(users);
-
-  // Якщо користувач змінює роль сам собі (наприклад, знімає адміна)
-  const cu = getCurrentUser();
-  if (cu && cu.id === userId) {
-    setCurrentUser(users[idx]);
-    renderHeader();
+  // Блокуємо зміну ролі для Супер Адміна
+  if (targetUser && targetUser.role === "superadmin") {
+    return showToast("Неможливо змінити роль Супер Адміністратора!", "error");
   }
 
-  renderAdminUsers();
-  showToast(
-    `✅ Роль змінено на «${newRole === "admin" ? "Адмін" : "Користувач"}»`,
-    "success",
-  );
+  const idx = users.findIndex((u) => u.id === userId);
+  if (idx >= 0) {
+    users[idx].role = newRole;
+    users[idx].isAdmin = newRole === "admin";
+    saveUsers(users);
+
+    const cu = getCurrentUser();
+    if (cu && cu.id === userId) {
+      setCurrentUser(users[idx]);
+      renderHeader();
+    }
+
+    if (typeof renderAdminUsers === "function") renderAdminUsers();
+    else if (typeof renderAdminPanel === "function") renderAdminPanel();
+
+    showToast(
+      `✅ Роль змінено на «${newRole === "admin" ? "Адмін" : "Користувач"}»`,
+      "success",
+    );
+  }
 }
 
 function deleteUser(userId) {
-  // Захист від видалення головного адміна та самого себе
-  if (userId === 1)
-    return showToast("Неможливо видалити головного адміністратора!", "error");
   const currentUser = getCurrentUser();
-  if (currentUser && currentUser.id === userId)
+  const users = getUsers();
+  const targetUser = users.find((u) => u.id === userId);
+
+  // Захист Супер Адміна та самого себе
+  if (targetUser && targetUser.role === "superadmin") {
+    return showToast("Неможливо видалити Супер Адміністратора!", "error");
+  }
+  if (currentUser && currentUser.id === userId) {
     return showToast("Не можна видалити власний акаунт!", "error");
+  }
 
   if (confirm("Ви впевнені, що хочете назавжди видалити цього користувача?")) {
-    let users = getUsers();
-    users = users.filter((u) => u.id !== userId);
-    saveUsers(users);
-    renderAdminUsers();
+    let newUsers = users.filter((u) => u.id !== userId);
+    saveUsers(newUsers);
+
+    if (typeof renderAdminUsers === "function") renderAdminUsers();
+    else if (typeof renderAdminPanel === "function") renderAdminPanel();
+
     showToast("🗑️ Користувача видалено", "success");
   }
 }
@@ -1297,6 +1374,7 @@ renderFeed();
 // ════════════════════════════════════════════
 //  MAKE FUNCTIONS GLOBAL FOR VITE (type="module")
 // ════════════════════════════════════════════
+
 window.setPage = setPage;
 window.handleSearch = handleSearch;
 window.openModal = openModal;
@@ -1325,15 +1403,18 @@ window.renderProfile = renderProfile;
 window.shareProfile = shareProfile;
 window.postComment = postComment;
 window.requireAuth = requireAuth;
-
-// Адмінка та Підтримка (якщо ви їх додали)
-window.goAdmin = typeof goAdmin !== 'undefined' ? goAdmin : null;
-window.changeUserRole = typeof changeUserRole !== 'undefined' ? changeUserRole : null;
-window.deleteUser = typeof deleteUser !== 'undefined' ? deleteUser : null;
-window.deleteCategory = typeof deleteCategory !== 'undefined' ? deleteCategory : null;
-window.prepareEditCategory = typeof prepareEditCategory !== 'undefined' ? prepareEditCategory : null;
-window.resetCategoryForm = typeof resetCategoryForm !== 'undefined' ? resetCategoryForm : null;
-window.saveCategory = typeof saveCategory !== 'undefined' ? saveCategory : null;
-window.filterByCategory = typeof filterByCategory !== 'undefined' ? filterByCategory : null;
-window.openSupportModal = typeof openSupportModal !== 'undefined' ? openSupportModal : null;
-window.submitSupportForm = typeof submitSupportForm !== 'undefined' ? submitSupportForm : null;
+window.openAdminPanel =
+  typeof openAdminPanel !== "undefined" ? openAdminPanel : null;
+window.switchAdminTab =
+  typeof switchAdminTab !== "undefined" ? switchAdminTab : null;
+window.changeUserRole =
+  typeof changeUserRole !== "undefined" ? changeUserRole : null;
+window.deleteUser = typeof deleteUser !== "undefined" ? deleteUser : null;
+window.startEditCat = typeof startEditCat !== "undefined" ? startEditCat : null;
+window.startDeleteCat =
+  typeof startDeleteCat !== "undefined" ? startDeleteCat : null;
+window.saveCat = typeof saveCat !== "undefined" ? saveCat : null;
+window.hideCatForm = typeof hideCatForm !== "undefined" ? hideCatForm : null;
+window.showCatForm = typeof showCatForm !== "undefined" ? showCatForm : null;
+window.deleteCatConfirmed =
+  typeof deleteCatConfirmed !== "undefined" ? deleteCatConfirmed : null;

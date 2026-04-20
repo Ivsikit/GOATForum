@@ -1353,3 +1353,15 @@ main {
     display: none;
   }
 }
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.form-field input:invalid:not(:placeholder-shown) {
+  border-color: var(--accent);
+}
+.form-field input:valid:not(:placeholder-shown) {
+  border-color: var(--green);
+}
