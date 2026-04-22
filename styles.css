@@ -317,16 +317,17 @@ main {
   font-size: 32px;
 }
 .featured-card-body {
-  padding: 8px 10px 10px;
+  padding: 8px 10px 12px; /* Збільшено нижній відступ з 10 до 12 */
 }
 .featured-card-title {
   font-weight: 700;
   font-size: 13px;
-  line-height: 1.3;
+  line-height: 1.5; /* Було 1.3 — це головна причина обрізання */
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-bottom: 3px; /* Запас для літери "g" */
 }
 .featured-card-sub {
   font-size: 11px;
@@ -385,7 +386,8 @@ main {
   border-radius: 12px;
   margin-bottom: 10px;
   display: flex;
-  overflow: hidden;
+  /* overflow: hidden;  <-- ПРИБЕРИ АБО ЗАКОМЕНТУЙ ЦЕЙ РЯДОК */
+  overflow: visible; /* Дозволь контенту "дихати" */
   transition: border-color 0.2s;
   cursor: pointer;
 }
@@ -465,8 +467,11 @@ main {
   font-family: var(--font-head);
   font-size: 16px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.6; /* Збільшуємо до 1.6 — це критично для Syne */
   margin-bottom: 8px;
+  padding-bottom: 6px; /* Даємо ще більше "повітря" знизу */
+  display: block; /* Гарантуємо, що це блочний елемент */
+  overflow: visible !important; /* Примусово дозволяємо вихід за межі */
 }
 .post-actions {
   display: flex;
@@ -1364,4 +1369,13 @@ main {
 }
 .form-field input:valid:not(:placeholder-shown) {
   border-color: var(--green);
+}
+#loginOverlay input:valid {
+  border-color: var(--border); /* Повертаємо стандартний колір рамки */
+  box-shadow: none; /* Прибираємо світіння, якщо воно є */
+}
+
+/* Якщо ви хочете, щоб при фокусі рамка залишалася синьою, а не зеленою */
+#loginOverlay input:focus:valid {
+  border-color: var(--blue);
 }

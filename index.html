@@ -58,7 +58,7 @@
               line-height: 1.8;
             "
           >
-            Довідка · Правила<br />© 2026 GOAT Forum
+            Довідка · Правила<br />© <span id="currentYear"></span> GOAT Forum
           </div>
         </div>
       </aside>
@@ -279,15 +279,40 @@
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Ім'я</th>
+                    <th>Користувач</th>
                     <th>Email</th>
-                    <th>Роль</th>
                     <th>Карма</th>
-                    <th>Зареєстрований</th>
+                    <th>Дата реєстрації</th>
+                    <th>Роль</th>
                     <th>Дії</th>
                   </tr>
                 </thead>
                 <tbody id="usersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="admin-posts" class="admin-page">
+            <div class="admin-header">
+              <div class="admin-title">Всі пости</div>
+              <div
+                style="font-size: 13px; color: var(--muted)"
+                id="postsCount"
+              ></div>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Заголовок</th>
+                    <th>Категорія</th>
+                    <th>Автор</th>
+                    <th>Голоси</th>
+                    <th>Коментарі</th>
+                    <th>Дії</th>
+                  </tr>
+                </thead>
+                <tbody id="postsTableBody"></tbody>
               </table>
             </div>
           </div>
@@ -477,27 +502,23 @@
         <div class="auth-error" id="loginError"></div>
         <div class="form-field">
           <label>Email</label>
-          <input>
+          <input
             type="email"
-            id="id="loginEmail"
+            id="loginEmail"
             placeholder="you@example.com"
             required
             title="Введіть коректний email"
-        </input>
+          />
           <span class="field-hint">Формат: name@example.com</span>
-          </div>
         </div>
         <div class="form-field">
           <label>Пароль</label>
           <input
             type="password"
-            id="regPassword"
-            placeholder="Мінімум 8 символів"
+            id="loginPassword"
+            placeholder="Ваш пароль"
             required
-            minlength="8"
-            title="Пароль має містити щонайменше 8 символів"
           />
-          <span class="field-hint">Мінімум 8 символів</span>
         </div>
         <button
           class="btn btn-accent"
@@ -533,16 +554,39 @@
         <p>Приєднуйся до GOAT Forum</p>
         <div class="auth-error" id="registerError"></div>
         <div class="form-field">
-          <label>Ім'я</label
-          ><input type="text" id="regName" placeholder="Ваше ім'я" />
+          <label>Ім'я</label>
+          <input
+            type="text"
+            id="regName"
+            placeholder="Ваше ім'я"
+            required
+            minlength="2"
+            title="Введіть ваше ім'я (мінімум 2 символи)"
+          />
+          <span class="field-hint">Мінімум 2 символи</span>
         </div>
         <div class="form-field">
-          <label>Email</label
-          ><input type="email" id="regEmail" placeholder="you@example.com" />
+          <label>Email</label>
+          <input
+            type="email"
+            id="regEmail"
+            placeholder="you@example.com"
+            required
+            title="Введіть коректний email"
+          />
+          <span class="field-hint">Формат: name@example.com</span>
         </div>
         <div class="form-field">
-          <label>Пароль</label
-          ><input type="password" id="regPassword" placeholder="••••••••" />
+          <label>Пароль</label>
+          <input
+            type="password"
+            id="regPassword"
+            placeholder="Мінімум 8 символів"
+            required
+            minlength="8"
+            title="Пароль має містити щонайменше 8 символів"
+          />
+          <span class="field-hint">Мінімум 8 символів</span>
         </div>
         <button
           class="btn btn-accent"
@@ -563,7 +607,6 @@
       </div>
     </div>
 
-    <div class="toast" id="toast"></div>
     <div class="toast" id="toast"></div>
     <script type="module" src="/app.js"></script>
   </body>

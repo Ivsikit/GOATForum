@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/Ivsikit/GOATForum#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.104.0",
     "dayjs": "^1.11.20"
   },
   "devDependencies": {
