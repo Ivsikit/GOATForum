@@ -399,7 +399,10 @@ function postCard(p) {
     </div>
     <div class="post-body">
       <div class="post-meta">
-        <div class="post-sub"><div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>${p.sub}</div>
+        <div class="post-sub" onclick="event.stopPropagation(); filterByCategory('${p.sub}')" style="cursor:pointer">
+  <div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>
+  ${p.sub}
+</div>
         <span class="post-author">Автор: <span>${authorName}</span></span>
         <span class="post-time">· ${p.time}</span>
         <span class="flair ${p.flairClass}">${p.flair}</span>
@@ -446,7 +449,10 @@ async function openPost(id) {
         </div>
         <div style="padding:16px;flex:1">
           <div class="post-meta" style="margin-bottom:10px">
-            <div class="post-sub"><div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>${p.sub}</div>
+            <div class="post-sub" onclick="filterByCategory('${p.sub}')" style="cursor:pointer">
+  <div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>
+  ${p.sub}
+</div>
             <span class="post-author">Автор: <span>${authorName}</span></span>
             <span class="post-time">· ${p.time}</span>
             <span class="flair ${p.flairClass}">${p.flair}</span>
@@ -1018,8 +1024,13 @@ function renderAdminPosts() {
         <b>${p.title}</b>
       </td>
       <td style="padding:12px">
-        <span style="background:${p.subColor}20;color:${p.subColor};padding:4px 8px;border-radius:12px;font-size:12px;white-space:nowrap">
-          ${p.emoji} ${p.sub}
+  <span 
+    onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; filterByCategory('${p.sub}')" 
+    style="background:${p.subColor}20; color:${p.subColor}; padding:4px 8px; border-radius:12px; font-size:12px; white-space:nowrap; cursor:pointer"
+  >
+    ${p.emoji} ${p.sub}
+  </span>
+</td>
         </span>
       </td>
       <td style="padding:12px;color:var(--text)">${p.authorName}</td>
