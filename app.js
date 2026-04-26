@@ -453,9 +453,8 @@ async function openPost(id) {
             ${p.edited ? `<span style="font-size:11px;color:var(--muted)">• редаговано</span>` : ""}
           </div>
          <div class="post-title" style="font-size:1.3rem;margin-bottom:12px;line-height:1.5;padding-bottom:4px">${p.title}</div>
-          <div style="font-size:40px;text-align:center;background:var(--surface2);border-radius:8px;padding:24px;margin-bottom:12px">${p.emoji}</div>
           ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%;border-radius:8px;margin-bottom:12px;max-height:400px;object-fit:cover"/>` : ""}
-          ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${p.body}</p>` : ""}
+          ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${linkify(p.body)}</p>` : ""}
           <div class="post-actions">
             <button class="action-btn">💬 ${comments.length}</button>
             <button class="action-btn" onclick="sharePost(${p.id})">🔗 Поділитись</button>
@@ -506,7 +505,7 @@ function renderComment(c) {
       <div class="user-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0;background:${uColor}">${name[0].toUpperCase()}</div>
       <div style="flex:1">
         <div style="font-size:12px;color:var(--blue);font-weight:600">${name} <span style="color:var(--muted);font-weight:400">· ${time}</span></div>
-        <div style="font-size:14px;margin-top:4px;line-height:1.6">${c.text}</div>
+        <div style="font-size:14px;margin-top:4px;line-height:1.6">${linkify(c.text)}</div>
       </div>
     </div>`;
 }
@@ -1054,6 +1053,25 @@ const avatarColors = [
   "#4527a0",
   "#0277bd",
 ];
+// Шукає посилання в тексті і робить їх клікабельними + додає попередження
+function linkify(text) {
+  if (!text) return "";
+  
+  // 1. Захист від шкідливого коду
+  let safeText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  
+  // 2. Пошук посилань
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  
+  // 3. Обгортаємо в тег <a> і додаємо попередження
+  return safeText.replace(urlRegex, function(url) {
+    // Текст вашого попередження:
+    const warningMsg = "Увага! Це посилання переносить вас за межі GOAT Forum і може бути небезпечним.\\n\\nВи впевнені, що хочете перейти?";
+    
+    // Додаємо onclick="return confirm(...)"
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: var(--blue); text-decoration: underline;" onclick="return confirm('${warningMsg}')">${url}</a>`;
+  });
+}
 function toggleJoinCategory(cat, btn) {
   if (!requireAuth()) return;
   const user = getCurrentUser();
@@ -1097,6 +1115,7 @@ function handleSearch(q) {
   if (document.getElementById("page-post").classList.contains("active"))
     setPage("home");
 }
+
 function filterByCategory(cat) {
   window.location.hash = "category-" + encodeURIComponent(cat);
   currentCategory = cat; // Запам'ятовуємо відкриту категорію
@@ -1129,14 +1148,20 @@ function setSort(btn, type) {
   renderFeed(basePosts);
 }
 function setPage(name) {
+  // 1. ЗАВЖДИ робимо каркас сайту видимим, а адмінку ховаємо 
+  // (незалежно від того, пост це, профіль чи головна сторінка)
+  document.getElementById("adminPanel").style.display = "none";
+  document.getElementById("mainLayout").style.display = "";
+
+  // 2. Очищення даних тільки якщо ми повертаємось на головну
   if (name === "home") {
     window.history.replaceState(null, null, window.location.pathname);
     currentPostId = null;
-    currentCategory = null; // Скидаємо категорію при поверненні на головну сторінку
-    document.getElementById("adminPanel").style.display = "none";
-    document.getElementById("mainLayout").style.display = "";
-    renderFeed(); // Рендерить всі пости
+    currentCategory = null; 
+    renderFeed(); 
   }
+  
+  // 3. Перемикання вкладок
   document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
   (document.getElementById("page-" + name) || document.getElementById("page-home"))?.classList.add("active");
   window.scrollTo(0, 0);
@@ -1250,12 +1275,21 @@ function fmtNum(n) {
   return n >= 1000 ? (n / 1000).toFixed(1) + "K" : n;
 }
 function sharePost(id) {
-  navigator.clipboard?.writeText(location.href + "#post-" + id);
-  showToast("🔗 Скопійовано!", "success");
+  // Формуємо чисте посилання: базовий домен + шлях + потрібний хеш
+  const cleanUrl = window.location.origin + window.location.pathname + "#post-" + id;
+  
+  // Копіюємо в буфер обміну
+  navigator.clipboard?.writeText(cleanUrl)
+    .then(() => showToast("🔗 Посилання скопійовано!", "success"))
+    .catch(() => showToast("❌ Не вдалося скопіювати", "error"));
 }
+
 function shareProfile() {
-  navigator.clipboard?.writeText(location.href + "#profile");
-  showToast("🔗 Скопійовано!", "success");
+  const cleanUrl = window.location.origin + window.location.pathname + "#profile";
+  
+  navigator.clipboard?.writeText(cleanUrl)
+    .then(() => showToast("🔗 Посилання скопійовано!", "success"))
+    .catch(() => showToast("❌ Не вдалося скопіювати", "error"));
 }
 function toggleJoin(btn) {
   if (!requireAuth()) return;
