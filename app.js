@@ -148,13 +148,20 @@ async function submitPost() {
   user.contributions = (user.contributions || 0) + 1;
   updateStoredUser(user);
 
-  await loadData();
+ await loadData();
   document.getElementById("postTitle").value = "";
   document.getElementById("postBody").value = "";
+  
   const imgInput = document.getElementById("postImage");
   if (imgInput) imgInput.value = "";
+  
+  // Очищення саме того ID, який ми бачимо в HTML
   const imgPreview = document.getElementById("imagePreview");
-  if (imgPreview) imgPreview.style.display = "none";
+  if (imgPreview) {
+    imgPreview.style.display = "none";
+    imgPreview.src = "";
+  }
+  
   closeModal("createPostOverlay");
   renderHeader();
   renderFeed();
@@ -400,14 +407,17 @@ function postCard(p) {
     <div class="post-body">
       <div class="post-meta">
         <div class="post-sub" onclick="event.stopPropagation(); filterByCategory('${p.sub}')" style="cursor:pointer">
-  <div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>
-  ${p.sub}
-</div>
+          <div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>
+          ${p.sub}
+        </div>
         <span class="post-author">Автор: <span>${authorName}</span></span>
         <span class="post-time">· ${p.time}</span>
         <span class="flair ${p.flairClass}">${p.flair}</span>
       </div>
       <div class="post-title">${p.title}</div>
+      
+      ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%; max-height:500px; object-fit:contain; background:var(--surface2); border-radius:8px; margin-top:10px; margin-bottom:12px;"/>` : ""}
+
       <div class="post-actions">
         <button class="action-btn">💬 ${fmtNum(commentCount)}</button>
         <button class="action-btn" onclick="event.stopPropagation();sharePost(${p.id})">🔗 Поділитись</button>
@@ -459,7 +469,7 @@ async function openPost(id) {
             ${p.edited ? `<span style="font-size:11px;color:var(--muted)">• редаговано</span>` : ""}
           </div>
          <div class="post-title" style="font-size:1.3rem;margin-bottom:12px;line-height:1.5;padding-bottom:4px">${p.title}</div>
-          ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%;border-radius:8px;margin-bottom:12px;max-height:400px;object-fit:cover"/>` : ""}
+          ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%; max-height:600px; object-fit:contain; background:var(--surface2); border-radius:8px; margin-bottom:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>` : ""}
           ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${linkify(p.body)}</p>` : ""}
           <div class="post-actions">
             <button class="action-btn">💬 ${comments.length}</button>
@@ -1412,11 +1422,12 @@ window.addEventListener("hashchange", handleRoute);
 //  IMAGE PREVIEW
 // ════════════════════════════════════════════
 function previewImage(input) {
+  // Використовуємо ID, який реально є у вашому index.html
   const preview = document.getElementById("imagePreview");
   if (!preview) return;
+  
   if (input.files && input.files[0]) {
     const file = input.files[0];
-    // Validate size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       showToast("Файл занадто великий! Максимум 5 МБ", "error");
       input.value = "";
