@@ -27,7 +27,7 @@
       <div class="header-actions" id="headerActions"></div>
     </header>
 
-    <div class="layout" id="mainLayout">
+   <div class="layout" id="mainLayout" style="display: none;">
       <aside class="sidebar-left">
         <div class="nav-section">
           <div class="nav-item active" onclick="setPage('home')">
@@ -49,6 +49,22 @@
           <div id="sidebarCommunities"></div>
         </div>
         <div class="nav-divider"></div>
+        <div class="nav-section">
+          <div class="nav-section-title">Зворотний зв'язок</div>
+          <div style="padding: 0 12px;">
+            <div class="form-field" style="margin-bottom: 8px;">
+              <input type="text" id="contactName" placeholder="Ваше ім'я" style="padding: 6px 10px; font-size: 13px;" />
+            </div>
+            <div class="form-field" style="margin-bottom: 8px;">
+              <input type="email" id="contactEmail" placeholder="Email" style="padding: 6px 10px; font-size: 13px;" />
+            </div>
+            <div class="form-field" style="margin-bottom: 8px;">
+              <textarea id="contactMessage" placeholder="Ваше повідомлення" style="padding: 6px 10px; font-size: 13px; min-height: 70px;"></textarea>
+            </div>
+            <button class="btn btn-accent" style="width: 100%; padding: 6px; font-size: 13px; border-radius: 8px;" onclick="submitContactForm()">Надіслати</button>
+          </div>
+        </div>
+        <div class="nav-divider"></div>
         <div class="nav-section" style="padding-bottom: 16px">
           <div
             style="
@@ -58,13 +74,13 @@
               line-height: 1.8;
             "
           >
-            Довідка · Правила<br />© <span id="currentYear"></span> GOAT Forum
+            <br />© <span id="currentYear"></span> GOAT Forum
           </div>
         </div>
       </aside>
 
       <main>
-        <div id="page-home" class="page active">
+        <div id="page-home" class="page">
           <div class="featured-row" id="featuredRow"></div>
           <div class="sort-bar">
             <button class="sort-btn active" onclick="setSort(this, 'best')">
@@ -90,14 +106,7 @@
 
       <aside class="sidebar-right">
         <div id="createPostWidget"></div>
-        <div class="widget">
-          <div class="widget-header">Популярні спільноти</div>
-          <div
-            class="widget-body"
-            style="padding: 8px 14px"
-            id="rightSidebarCommunities"
-          ></div>
-        </div>
+
         <div class="widget">
           <div class="widget-header">Правила форуму</div>
           <div class="widget-body" style="padding: 8px 14px">
@@ -118,6 +127,15 @@
             </div>
           </div>
         </div>
+
+        <div class="widget">
+          <div class="widget-header">Мої спільноти</div>
+          <div
+            class="widget-body"
+            style="padding: 8px 14px"
+            id="rightSidebarCommunities"
+          ></div>
+        </div>
       </aside>
     </div>
 
@@ -125,56 +143,20 @@
     <div id="adminPanel" style="display: none; margin-top: var(--header)">
       <div class="admin-layout">
         <div class="admin-sidebar">
-          <div class="admin-sidebar-title">⚙️ Адмін панель</div>
-          <div class="admin-nav">
-            <div
-              class="admin-nav-item active"
-              onclick="switchAdminTab('dashboard')"
-              id="atab-dashboard"
-            >
-              📊 Дашборд
-            </div>
-            <div
-              class="admin-nav-item"
-              onclick="switchAdminTab('categories')"
-              id="atab-categories"
-            >
-              🗂️ Категорії
-            </div>
-            <div
-              class="admin-nav-item"
-              onclick="switchAdminTab('users')"
-              id="atab-users"
-            >
-              👥 Користувачі
-            </div>
-            <div
-              class="admin-nav-item"
-              onclick="switchAdminTab('posts')"
-              id="atab-posts"
-            >
-              📝 Пости
-            </div>
-          </div>
-          <div
-            style="
-              margin-top: 20px;
-              padding-top: 16px;
-              border-top: 1px solid var(--border);
-            "
-          >
-            <div
-              class="admin-nav-item"
-              onclick="
-                setPage('home');
-                document.getElementById('adminPanel').style.display = 'none';
-                document.getElementById('mainLayout').style.display = '';
-              "
-            >
-              ← Повернутись на форум
-            </div>
-          </div>
-        </div>
+  <div class="admin-sidebar-title">⚙️ Адмін панель</div>
+  <div class="admin-nav">
+    <div class="admin-nav-item active" onclick="switchAdminTab('dashboard')" id="atab-dashboard">📊 Дашборд</div>
+    <div class="admin-nav-item" onclick="switchAdminTab('categories')" id="atab-categories">🗂️ Категорії</div>
+    <div class="admin-nav-item" onclick="switchAdminTab('users')" id="atab-users">👥 Користувачі</div>
+    <div class="admin-nav-item" onclick="switchAdminTab('posts')" id="atab-posts">📝 Пости</div>
+    <div class="admin-nav-item" onclick="switchAdminTab('messages')" id="atab-messages">✉️ Звернення</div>
+  </div>
+  <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+    <div class="admin-nav-item" onclick="setPage('home'); document.getElementById('adminPanel').style.display = 'none'; document.getElementById('mainLayout').style.display = '';">
+      ← Повернутись на форум
+    </div>
+  </div>
+</div>
         <div class="admin-content">
           <!-- DASHBOARD -->
           <div id="admin-dashboard" class="admin-page active">
@@ -267,13 +249,10 @@
           </div>
 
           <!-- USERS -->
-          <div id="admin-users" class="admin-page">
+ <div id="admin-users" class="admin-page">
             <div class="admin-header">
               <div class="admin-title">Користувачі</div>
-              <div
-                style="font-size: 13px; color: var(--muted)"
-                id="userCount"
-              ></div>
+              <div style="font-size: 13px; color: var(--muted)" id="userCount"></div>
             </div>
             <div class="admin-table-wrap">
               <table class="admin-table">
@@ -295,10 +274,7 @@
           <div id="admin-posts" class="admin-page">
             <div class="admin-header">
               <div class="admin-title">Всі пости</div>
-              <div
-                style="font-size: 13px; color: var(--muted)"
-                id="postsCount"
-              ></div>
+              <div style="font-size: 13px; color: var(--muted)" id="postsCount"></div>
             </div>
             <div class="admin-table-wrap">
               <table class="admin-table">
@@ -317,34 +293,28 @@
             </div>
           </div>
 
-          <!-- POSTS -->
-          <div id="admin-posts" class="admin-page">
+          <div id="admin-messages" class="admin-page">
             <div class="admin-header">
-              <div class="admin-title">Всі пости</div>
-              <div
-                style="font-size: 13px; color: var(--muted)"
-                id="postsCount"
-              ></div>
+              <div class="admin-title">Звернення користувачів</div>
+              <div style="font-size: 13px; color: var(--muted)" id="messagesCount"></div>
             </div>
             <div class="admin-table-wrap">
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Заголовок</th>
-                    <th>Категорія</th>
-                    <th>Автор</th>
-                    <th>Голоси</th>
-                    <th>Коментарі</th>
-                    <th>Дії</th>
+                    <th>Дата</th>
+                    <th>Ім'я</th>
+                    <th>Email</th>
+                    <th>Повідомлення</th>
+                    <th>Статус</th> <th>Дії</th>
                   </tr>
                 </thead>
-                <tbody id="postsTableBody"></tbody>
+                <tbody id="messagesTableBody"></tbody>
               </table>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+
+        </div> </div> </div>
 
     <!-- CREATE POST MODAL -->
     <div
@@ -368,7 +338,11 @@
             type="text"
             id="postTitle"
             placeholder="Введіть заголовок поста…"
-            maxlength="200"
+            maxlength="100"
+            oninput="
+              document.getElementById('titleCount').textContent =
+                this.value.length + ' / 100'
+            "
           />
           <div
             style="
@@ -379,7 +353,7 @@
             "
             id="titleCount"
           >
-            0 / 200
+            0 / 100
           </div>
         </div>
         <div class="form-field">
@@ -404,6 +378,41 @@
             onfocus="this.style.borderColor = 'var(--blue)'"
             onblur="this.style.borderColor = 'var(--border)'"
           ></textarea>
+        </div>
+        <div class="form-field">
+          <label>Зображення (необов'язково)</label>
+          <input
+            type="file"
+            id="postImage"
+            accept="image/*"
+            style="
+              width: 100%;
+              background: var(--bg);
+              border: 1px solid var(--border);
+              color: var(--text);
+              border-radius: 8px;
+              padding: 8px 12px;
+              font-family: var(--font-body);
+              font-size: 13px;
+              cursor: pointer;
+            "
+            onchange="previewImage(this)"
+          />
+          <span class="field-hint">PNG, JPG, WEBP — до 5 МБ</span>
+          <img
+            id="imagePreview"
+            src=""
+            alt="Попередній перегляд"
+            style="
+              display: none;
+              width: 100%;
+              max-height: 200px;
+              object-fit: cover;
+              border-radius: 8px;
+              margin-top: 8px;
+              border: 1px solid var(--border);
+            "
+          />
         </div>
         <div style="display: flex; gap: 8px; justify-content: flex-end">
           <button

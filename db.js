@@ -117,3 +117,62 @@ export async function createCommentDb(commentData) {
   const { error } = await supabase.from("comments").insert([commentData]);
   return { success: !error, error };
 }
+// Отримати всі коментарі конкретного користувача
+export async function fetchUserCommentsDb(userId) {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error("Помилка завантаження коментарів користувача:", error);
+    return [];
+  }
+  return data || [];
+}
+// Зберегти нове звернення
+export async function submitContactDb(data) {
+  const { error } = await supabase.from('contacts').insert([data]);
+  return { success: !error, error };
+}
+
+export async function fetchContactsDb() {
+  const { data, error } = await supabase.from('contacts').select('*').order('created_at', { ascending: false });
+  return data || [];
+}
+
+export async function deleteContactDb(id) {
+  const { error } = await supabase.from('contacts').delete().eq('id', id);
+  return { success: !error, error };
+}
+export async function updateContactStatusDb(id, status) {
+  const { error } = await supabase
+    .from('contacts')
+    .update({ status })
+    .eq('id', id);
+  return { success: !error, error };
+}
+// Завантаження фото у сховище
+export async function uploadPostImage(file) {
+  // Створюємо унікальне ім'я файлу, щоб вони не перезаписувались
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Math.random()}.${fileExt}`;
+  const filePath = `uploads/${fileName}`;
+
+  const { data, error } = await supabase.storage
+    .from('post-images')
+    .upload(filePath, file);
+
+  if (error) {
+    console.error("Помилка завантаження файлу:", error);
+    return null;
+  }
+
+  // Отримуємо публічне посилання на файл
+  const { data: urlData } = supabase.storage
+    .from('post-images')
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
+}

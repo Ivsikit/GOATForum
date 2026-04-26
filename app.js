@@ -11,6 +11,12 @@ import {
   fetchUsers,
   fetchCommentsDb,
   createCommentDb,
+  fetchUserCommentsDb,
+  submitContactDb,
+  fetchContactsDb,
+  deleteContactDb,
+  updateContactStatusDb,
+  uploadPostImage,
 } from "./db.js";
 
 // ════════════════════════════════════════════
@@ -21,6 +27,7 @@ let categoryConfig = {};
 let voteMap = {};
 let postComments = {};
 let currentPostId = null;
+let currentCategory = null;
 let _pendingDeleteId = null;
 let _pendingDeleteCatKey = null;
 
@@ -63,40 +70,30 @@ function saveCategories(obj) {
 // ════════════════════════════════════════════
 //  SUPABASE СИНХРОНІЗАЦІЯ
 // ════════════════════════════════════════════
+// ════════════════════════════════════════════
+//  SUPABASE СИНХРОНІЗАЦІЯ
+// ════════════════════════════════════════════
 async function loadData() {
   const catData = await fetchCategories();
   categoryConfig = {};
-  catData.forEach((c) => {
+  catData.forEach(c => {
     categoryConfig[c.name] = {
-      emoji: c.emoji,
-      color: c.color,
-      desc: c.description,
-      flair: [c.flair_label, c.flair_class],
+      emoji: c.emoji, color: c.color, desc: c.description, flair: [c.flair_label, c.flair_class]
     };
   });
 
   const postData = await fetchPosts();
-  posts = postData.map((p) => {
-    const cat = categoryConfig[p.sub] || {
-      emoji: "📝",
-      color: "#ff4500",
-      flair: ["Пост", "flair-tech"],
-    };
+  posts = postData.map(p => {
+    const cat = categoryConfig[p.sub] || { emoji: "📝", color: "#ff4500", flair: ["Пост", "flair-tech"] };
     return {
-      id: p.id,
-      authorId: p.author_id,
-      authorName: p.author_name,
-      sub: p.sub,
-      subColor: cat.color,
-      title: p.title,
-      body: p.body,
-      emoji: cat.emoji,
-      flair: cat.flair[0],
-      flairClass: cat.flair[1],
-      votes: p.votes || 0,
-      comments: p.comments_count || 0,
+      id: p.id, authorId: p.author_id, authorName: p.author_name,
+      sub: p.sub, subColor: cat.color, title: p.title, body: p.body,
+      emoji: cat.emoji, flair: cat.flair[0], flairClass: cat.flair[1],
+      votes: p.votes || 0, comments: p.comments_count || 0,
       time: new Date(p.created_at).toLocaleString("uk-UA"),
       edited: p.is_edited,
+      image_url: p.image_url || null,
+      timestamp: new Date(p.created_at).getTime() // <-- Наш маркер для точного сортування
     };
   });
 }
@@ -119,12 +116,25 @@ async function submitPost() {
     return;
   }
 
+  // Handle optional image upload
+  let imageUrl = null;
+  const imageInput = document.getElementById("postImage");
+  if (imageInput && imageInput.files && imageInput.files[0]) {
+    showToast("Завантаження зображення…");
+    imageUrl = await uploadPostImage(imageInput.files[0]);
+    if (!imageUrl) {
+      showToast("Помилка завантаження зображення!", "error");
+      return;
+    }
+  }
+
   const result = await createPostDb({
     author_id: user.id,
     author_name: user.name,
     sub: cat,
     title: title,
     body: body || "",
+    image_url: imageUrl,
     votes: 1,
     comments_count: 0,
   });
@@ -141,6 +151,10 @@ async function submitPost() {
   await loadData();
   document.getElementById("postTitle").value = "";
   document.getElementById("postBody").value = "";
+  const imgInput = document.getElementById("postImage");
+  if (imgInput) imgInput.value = "";
+  const imgPreview = document.getElementById("imagePreview");
+  if (imgPreview) imgPreview.style.display = "none";
   closeModal("createPostOverlay");
   renderHeader();
   renderFeed();
@@ -233,29 +247,36 @@ async function deletePost() {
 // ════════════════════════════════════════════
 function renderSidebarCommunities() {
   const cats = Object.entries(categoryConfig);
-  const colors = ["blue", "green", "purple", "", "blue"];
-  document.getElementById("sidebarCommunities").innerHTML = cats
-    .slice(0, 5)
-    .map(
-      ([k, v], i) =>
-        `<div class="nav-item" onclick="filterByCategory('${k}')" style="cursor:pointer"><div class="community-avatar ${colors[i % colors.length]}" style="background:${v.color}20;color:${v.color};border:1px solid ${v.color}40">${v.emoji}</div>${k}</div>`,
-    )
-    .join("");
+  const user = getCurrentUser();
+  const joinedSubs = user?.joinedSubs || [];
 
+  // 1. Ліва панель (залишаємо як було - показуємо все)
+  // 1. Ліва панель (показуємо АБСОЛЮТНО ВСІ категорії бази)
+  const colors = ["blue", "green", "purple", "", "blue"];
+  document.getElementById("sidebarCommunities").innerHTML = cats.map(([k, v], i) =>
+        `<div class="nav-item" onclick="filterByCategory('${k}')" style="cursor:pointer"><div class="community-avatar ${colors[i % colors.length]}" style="background:${v.color}20;color:${v.color};border:1px solid ${v.color}40">${v.emoji}</div>${k}</div>`
+  ).join("");
+
+  // 2. Права панель (показуємо тільки підписки)
   const rsc = document.getElementById("rightSidebarCommunities");
-  if (rsc) {
-    rsc.innerHTML = cats
-      .slice(0, 5)
-      .map(([k, v], i) => {
-        const count = posts.filter((p) => p.sub === k).length;
-        return `<div class="community-row" onclick="filterByCategory('${k}')" style="cursor:pointer">
+  if(rsc) {
+    // Фільтруємо категорії: залишаємо тільки ті, що є в масиві joinedSubs
+    const myCats = cats.filter(([k, v]) => joinedSubs.includes(k));
+
+    if (myCats.length === 0) {
+      rsc.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px">Ви ще не підписані на жодну спільноту</div>`;
+      return;
+    }
+
+    rsc.innerHTML = myCats.map(([k, v], i) => {
+      const count = posts.filter((p) => p.sub === k).length;
+      return `<div class="community-row" onclick="filterByCategory('${k}')" style="cursor:pointer">
       <div class="community-num">${i + 1}</div>
       <div style="width:24px;height:24px;border-radius:50%;background:${v.color}20;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${v.emoji}</div>
       <div class="community-info"><div class="community-name">${k}</div><div class="community-members">${count} постів</div></div>
-      <button class="join-btn" onclick="event.stopPropagation();toggleJoin(this)">Приєднатись</button>
+      <button class="join-btn joined" onclick="event.stopPropagation();toggleJoin(this)">Вийти</button>
     </div>`;
-      })
-      .join("");
+    }).join("");
   }
 }
 
@@ -272,11 +293,13 @@ function renderHeader() {
 
   if (user) {
     const ini = user.name.slice(0, 2).toUpperCase();
+    const uColor = getUserColor(user.name); // ГЕНЕРУЄМО КОЛІР КОРИСТУВАЧА
+
     ha.innerHTML = `
       <button style="background:var(--surface2);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:6px;border-radius:20px;padding:6px 14px;font-size:13px" onclick="openModal('createPostOverlay')">✏️ Створити</button>
       <button class="notif-btn"><span>🔔</span><span class="notif-dot"></span></button>
       <div class="avatar-wrap">
-        <div class="user-avatar" id="avatarBtn" onclick="toggleDropdown()">${ini}</div>
+        <div class="user-avatar" id="avatarBtn" style="background:${uColor}" onclick="toggleDropdown()">${ini}</div>
         <div class="avatar-dropdown" id="avatarDropdown">
           <div class="dd-header"><div style="font-weight:700">${user.name}
               ${user.role === "superadmin" ? ' <span style="background:rgba(220,38,38,.15);color:#dc2626;font-size:10px;padding:1px 7px;border-radius:10px">СУПЕР АДМІН</span>' : isAdmin() ? ' <span style="background:rgba(255,69,0,.15);color:var(--accent);font-size:10px;padding:1px 7px;border-radius:10px">АДМІН</span>' : ""}
@@ -292,8 +315,10 @@ function renderHeader() {
     if (cpw)
       cpw.innerHTML = `
       <div class="widget" style="margin-bottom:12px"><div class="widget-body" style="padding:14px">
-        <div style="display:flex;align-items:center;gap:10px"><div class="user-avatar" style="width:36px;height:36px">${ini}</div>
-        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:8px 14px;color:var(--muted);cursor:pointer" onclick="openModal('createPostOverlay')">Створити пост…</div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="user-avatar" style="width:36px;height:36px;background:${uColor}">${ini}</div>
+          <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:8px 14px;color:var(--muted);cursor:pointer" onclick="openModal('createPostOverlay')">Створити пост…</div>
+        </div>
       </div></div>`;
   } else {
     ha.innerHTML = `<button class="btn btn-ghost" onclick="openModal('loginOverlay')">Вхід</button><button class="btn btn-accent" onclick="openModal('registerOverlay')">Реєстрація</button>`;
@@ -303,9 +328,35 @@ function renderHeader() {
 
 function renderFeed(data) {
   const list = data || posts;
-  document.getElementById("postFeed").innerHTML = list
-    .map((p) => postCard(p))
-    .join("");
+  let html = "";
+
+  // Малюємо шапку спільноти, якщо ми знаходимось всередині неї
+  if (currentCategory && categoryConfig[currentCategory]) {
+    const cat = categoryConfig[currentCategory];
+    const user = getCurrentUser();
+    const isJoined = user?.joinedSubs?.includes(currentCategory);
+    
+    html += `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; display:flex; gap:16px; align-items:center; animation: fadeIn 0.3s ease both;">
+      <div style="width:64px; height:64px; border-radius:50%; background:${cat.color}20; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0">
+        ${cat.emoji}
+      </div>
+      <div style="flex:1">
+        <h1 style="font-family:var(--font-head); font-size:1.5rem; margin-bottom:4px; margin-top:0">${currentCategory}</h1>
+        <div style="color:var(--muted); font-size:13px">${cat.desc || "Спільнота за інтересами"} • ${list.length} постів</div>
+      </div>
+      <div>
+        <button class="btn ${isJoined ? 'btn-ghost joined' : 'btn-accent'}" style="border-radius:20px; padding:8px 20px" onclick="toggleJoinCategory('${currentCategory}', this)">
+          ${isJoined ? 'Вийти' : 'Приєднатись'}
+        </button>
+      </div>
+    </div>`;
+  }
+
+  // Додаємо самі пости
+  html += list.map((p) => postCard(p)).join("");
+  document.getElementById("postFeed").innerHTML = html || `<div style="text-align:center; padding:40px; color:var(--muted)">Постів ще немає</div>`;
+  
   renderFeatured(list);
   renderSidebarCommunities();
 }
@@ -365,6 +416,7 @@ function postCard(p) {
 }
 
 async function openPost(id) {
+  window.location.hash = "post-" + id;
   currentPostId = id;
   const p = posts.find((x) => x.id === id);
   if (!p) return;
@@ -402,6 +454,7 @@ async function openPost(id) {
           </div>
          <div class="post-title" style="font-size:1.3rem;margin-bottom:12px;line-height:1.5;padding-bottom:4px">${p.title}</div>
           <div style="font-size:40px;text-align:center;background:var(--surface2);border-radius:8px;padding:24px;margin-bottom:12px">${p.emoji}</div>
+          ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%;border-radius:8px;margin-bottom:12px;max-height:400px;object-fit:cover"/>` : ""}
           ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${p.body}</p>` : ""}
           <div class="post-actions">
             <button class="action-btn">💬 ${comments.length}</button>
@@ -437,7 +490,6 @@ async function openPost(id) {
 }
 
 function renderComment(c) {
-  // Форматуємо дату з Supabase
   const time = c.created_at
     ? new Date(c.created_at).toLocaleString("uk-UA", {
         hour: "2-digit",
@@ -446,20 +498,18 @@ function renderComment(c) {
         month: "2-digit",
       })
     : "щойно";
-
-  // Використовуємо author_name, як у таблиці бази даних
   const name = c.author_name || "Гість";
+  const uColor = getUserColor(name); // ГЕНЕРУЄМО КОЛІР
 
   return `
     <div style="display:flex;gap:10px;margin-bottom:14px">
-      <div class="user-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0">${name[0].toUpperCase()}</div>
+      <div class="user-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0;background:${uColor}">${name[0].toUpperCase()}</div>
       <div style="flex:1">
         <div style="font-size:12px;color:var(--blue);font-weight:600">${name} <span style="color:var(--muted);font-weight:400">· ${time}</span></div>
         <div style="font-size:14px;margin-top:4px;line-height:1.6">${c.text}</div>
       </div>
     </div>`;
 }
-
 // ════════════════════════════════════════════
 //  ВЗАЄМОДІЯ ТА АВТОРИЗАЦІЯ
 // ════════════════════════════════════════════
@@ -641,6 +691,7 @@ function openAdminPanel() {
 }
 
 function switchAdminTab(tab) {
+  window.location.hash = "admin-" + tab;
   document
     .querySelectorAll(".admin-page")
     .forEach((p) => p.classList.remove("active"));
@@ -649,10 +700,12 @@ function switchAdminTab(tab) {
     .forEach((n) => n.classList.remove("active"));
   document.getElementById("admin-" + tab).classList.add("active");
   document.getElementById("atab-" + tab).classList.add("active");
+  
   if (tab === "dashboard") renderAdminDashboard();
   else if (tab === "categories") renderAdminCategories();
   else if (tab === "users") renderAdminUsers();
   else if (tab === "posts") renderAdminPosts();
+  else if (tab === "messages") renderAdminMessages(); // <-- ЦЕЙ РЯДОК КРИТИЧНО ВАЖЛИВИЙ
 }
 
 function renderAdminDashboard() {
@@ -770,6 +823,7 @@ async function saveCat() {
   await loadData();
   renderAdminCategories();
   renderSidebarCommunities();
+  renderHeader();
   showToast("✅ Категорію збережено!", "success");
 }
 
@@ -803,7 +857,77 @@ async function deleteCatConfirmed() {
     showToast("Помилка видалення!", "error");
   }
 }
+// Відправка форми з лівого меню
+async function submitContactForm() {
+  const name = document.getElementById("contactName").value.trim();
+  const email = document.getElementById("contactEmail").value.trim();
+  const message = document.getElementById("contactMessage").value.trim();
 
+  if (!name || !email || !message) { showToast("Будь ласка, заповніть всі поля", "error"); return; }
+
+  const result = await submitContactDb({ name, email, message });
+  if (result.success) {
+    showToast("✅ Повідомлення надіслано!", "success");
+    document.getElementById("contactName").value = "";
+    document.getElementById("contactEmail").value = "";
+    document.getElementById("contactMessage").value = "";
+  } else {
+    showToast("Помилка при надсиланні", "error");
+  }
+}
+
+// Відображення звернень в Адмінці
+async function renderAdminMessages() {
+  const msgs = await fetchContactsDb();
+  const countEl = document.getElementById("messagesCount");
+  if (countEl) countEl.textContent = `Всього: ${msgs.length} звернень`;
+
+  const statusColors = {
+    'new': { label: 'Нове', color: 'var(--blue)' },
+    'process': { label: 'В роботі', color: 'var(--yellow)' },
+    'closed': { label: 'Закрито', color: 'var(--muted)' }
+  };
+
+  document.getElementById("messagesTableBody").innerHTML = msgs.map(m => {
+    const date = m.created_at ? new Date(m.created_at).toLocaleString('uk-UA') : "—";
+    const currentStatus = m.status || 'new';
+
+    return `
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:12px;color:var(--muted);font-size:12px;white-space:nowrap">${date}</td>
+        <td style="padding:12px;font-weight:600">${m.name}</td>
+        <td style="padding:12px;color:var(--blue)">${m.email}</td>
+        <td style="padding:12px;max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${m.message.replace(/"/g, '&quot;')}">${m.message}</td>
+        <td style="padding:12px">
+          <select 
+            onchange="changeMessageStatus(${m.id}, this.value)" 
+            style="background:${statusColors[currentStatus].color}20; color:${statusColors[currentStatus].color}; border:1px solid ${statusColors[currentStatus].color}40; border-radius:12px; padding:4px 8px; font-size:12px; font-weight:600; cursor:pointer; outline:none"
+          >
+            <option value="new" ${currentStatus === 'new' ? 'selected' : ''}>🆕 Нове</option>
+            <option value="process" ${currentStatus === 'process' ? 'selected' : ''}>⚙️ В роботі</option>
+            <option value="closed" ${currentStatus === 'closed' ? 'selected' : ''}>✅ Закрито</option>
+          </select>
+        </td>
+        <td style="padding:12px">
+          <button class="tbl-btn danger" onclick="deleteMessage(${m.id})" title="Видалити">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+// Видалення розглянутого звернення
+async function deleteMessage(id) {
+  if (confirm("Видалити це звернення?")) {
+    const result = await deleteContactDb(id);
+    if (result.success) {
+      renderAdminMessages();
+      showToast("🗑️ Звернення видалено", "success");
+    } else {
+      showToast("Помилка видалення", "error");
+    }
+  }
+}
 async function renderAdminUsers() {
   const usersFromDb = await fetchUsers();
   const currentU = getCurrentUser();
@@ -917,6 +1041,50 @@ function renderAdminPosts() {
 // ════════════════════════════════════════════
 //  ДОПОМІЖНІ ФУНКЦІЇ ТА НАВІГАЦІЯ
 // ════════════════════════════════════════════
+// Палітра яскравих кольорів для аватарок
+const avatarColors = [
+  "#ff4500",
+  "#1565c0",
+  "#000000",
+  "#ab47bc",
+  "#f57c00",
+  "#00838f",
+  "#c2185b",
+  "#558b2f",
+  "#4527a0",
+  "#0277bd",
+];
+function toggleJoinCategory(cat, btn) {
+  if (!requireAuth()) return;
+  const user = getCurrentUser();
+  if (!user.joinedSubs) user.joinedSubs = [];
+  
+  const index = user.joinedSubs.indexOf(cat);
+  if (index === -1) {
+    user.joinedSubs.push(cat);
+    btn.classList.remove('btn-accent');
+    btn.classList.add('btn-ghost', 'joined');
+    btn.textContent = "Вийти";
+  } else {
+    user.joinedSubs.splice(index, 1);
+    btn.classList.remove('btn-ghost', 'joined');
+    btn.classList.add('btn-accent');
+    btn.textContent = "Приєднатись";
+  }
+  
+  updateStoredUser(user);
+  renderSidebarCommunities(); // Оновлює ваш список справа
+}
+// Функція, яка бере ім'я і завжди повертає для нього один і той самий колір
+function getUserColor(name) {
+  if (!name) return avatarColors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % avatarColors.length;
+  return avatarColors[index];
+}
 function handleSearch(q) {
   const f = q.trim()
     ? posts.filter(
@@ -930,49 +1098,64 @@ function handleSearch(q) {
     setPage("home");
 }
 function filterByCategory(cat) {
-  renderFeed(posts.filter((p) => p.sub === cat));
-  setPage("home");
-  showToast(`Показано: ${cat}`, "success");
+  window.location.hash = "category-" + encodeURIComponent(cat);
+  currentCategory = cat; // Запам'ятовуємо відкриту категорію
+  document.getElementById("adminPanel").style.display = "none";
+  document.getElementById("mainLayout").style.display = "";
+  document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+  document.getElementById("page-home").classList.add("active");
+  window.scrollTo(0, 0);
+  
+  // Рендеримо тільки пости цієї категорії
+  renderFeed(posts.filter(p => p.sub === cat));
 }
 function setSort(btn, type) {
-  document
-    .querySelectorAll(".sort-btn")
-    .forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".sort-btn").forEach((b) => b.classList.remove("active"));
   btn.classList.add("active");
-  const s = [...posts];
-  if (type === "hot") s.sort((a, b) => b.comments - a.comments);
-  else if (type === "new") s.sort(() => Math.random() - 0.5);
-  else if (type === "top") s.sort((a, b) => b.votes - a.votes);
-  renderFeed(s);
+  
+  // Якщо відкрита категорія — сортуємо тільки її пости, інакше сортуємо всі
+  const basePosts = currentCategory ? posts.filter(p => p.sub === currentCategory) : [...posts];
+  
+  if (type === "hot") {
+    basePosts.sort((a, b) => b.comments - a.comments);
+  } else if (type === "new") {
+    basePosts.sort((a, b) => b.timestamp - a.timestamp); 
+  } else if (type === "top") {
+    basePosts.sort((a, b) => b.votes - a.votes);
+  } else if (type === "best" || !type) {
+    basePosts.sort((a, b) => (b.votes + b.comments) - (a.votes + a.comments));
+  }
+  
+  renderFeed(basePosts);
 }
 function setPage(name) {
   if (name === "home") {
+    window.history.replaceState(null, null, window.location.pathname);
     currentPostId = null;
+    currentCategory = null; // Скидаємо категорію при поверненні на головну сторінку
     document.getElementById("adminPanel").style.display = "none";
     document.getElementById("mainLayout").style.display = "";
-    renderFeed();
+    renderFeed(); // Рендерить всі пости
   }
-  document
-    .querySelectorAll(".page")
-    .forEach((p) => p.classList.remove("active"));
-  (
-    document.getElementById("page-" + name) ||
-    document.getElementById("page-home")
-  )?.classList.add("active");
+  document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+  (document.getElementById("page-" + name) || document.getElementById("page-home"))?.classList.add("active");
   window.scrollTo(0, 0);
 }
 
 let profileTab = "overview";
 function goProfile() {
   if (!requireAuth()) return;
+  window.location.hash = "profile";
   renderProfile("overview");
   setPage("profile");
 }
-function renderProfile(tab) {
+async function renderProfile(tab) {
   if (tab) profileTab = tab;
   const user = getCurrentUser();
   if (!user) return;
+
   const ini = user.name.slice(0, 2).toUpperCase();
+  const uColor = getUserColor(user.name);
   const handle = "u/" + user.name.toLowerCase().replace(/\s+/g, "_");
   const tabs = [
     { id: "overview", label: "Огляд" },
@@ -980,29 +1163,54 @@ function renderProfile(tab) {
     { id: "comments", label: "Коментарі" },
   ];
 
-  const emptyMap = {
-    overview: {
-      icon: "🐐",
-      title: "Постів ще немає",
-      sub: "Щойно ви опублікуєте пост, він з'явиться тут.",
-    },
-    posts: {
-      icon: "📝",
-      title: "Постів ще немає",
-      sub: "Натисніть «Створити пост».",
-    },
-    comments: {
-      icon: "💬",
-      title: "Коментарів ще немає",
-      sub: "Візьміть участь в обговоренні.",
-    },
-  };
-  const e = emptyMap[profileTab] || emptyMap.overview;
+  // 1. Фільтруємо пости користувача з глобального масиву
+  const userPosts = posts.filter(p => p.authorId === user.id);
+  
+  // 2. Завантажуємо коментарі користувача з бази
+  const userComments = await fetchUserCommentsDb(user.id);
 
+  // 3. Формуємо контент для активної вкладки
+  let tabContent = "";
+  if (profileTab === "posts") {
+    tabContent = userPosts.length > 0 
+      ? userPosts.map(p => postCard(p)).join("") 
+      : `<div class="profile-empty"><h3>Постів ще немає</h3><p>Ви ще не опублікували жодного поста.</p></div>`;
+      
+  } else if (profileTab === "comments") {
+    tabContent = userComments.length > 0 
+      ? `<div style="padding:8px 16px">${userComments.map(c => {
+          // Шукаємо пост, до якого належить коментар
+          const p = posts.find(post => post.id === c.post_id);
+          
+          // Створюємо рядок з назвою поста
+          const postHeader = p 
+            ? `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">
+                 До поста: <a style="color:var(--blue); cursor:pointer; font-weight:600; text-decoration:underline" onclick="openPost(${p.id})">${p.title}</a>
+               </div>` 
+            : `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">Пост видалено або недоступний</div>`;
+
+          return `
+            <div style="border-bottom:1px solid var(--border); padding:16px 0; animation: fadeIn 0.3s ease both">
+              ${postHeader}
+              ${renderComment(c)}
+            </div>`;
+        }).join("")}</div>` 
+      : `<div class="profile-empty"><h3>Коментарів ще немає</h3><p>Ви ще не залишили жодного коментаря.</p></div>`;
+      
+  } else {
+    // Вкладка "Огляд" (Overview)
+    tabContent = userPosts.length > 0 
+      ? `<div style="padding:10px 0; border-bottom:1px solid var(--border); margin-bottom:10px; font-weight:700; padding-left:16px">Останні пости</div>` + userPosts.slice(0, 3).map(p => postCard(p)).join("")
+      : `<div class="profile-empty"><h3>Активності немає</h3><p>Тут з'являться ваші останні дії.</p></div>`;
+  }
+
+  // 4. Рендеримо всю сторінку профілю
   document.getElementById("profileContent").innerHTML = `
     <div class="profile-header-card">
       <div class="profile-banner"></div>
-      <div class="profile-avatar-wrap"><div class="profile-avatar-big">${ini}</div></div>
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar-big" style="background:${uColor}">${ini}</div>
+      </div>
       <div class="profile-info-row">
         <div>
           <div class="profile-name">${user.name}${isAdmin() ? '<span class="admin-badge">АДМІН</span>' : ""}</div>
@@ -1017,10 +1225,8 @@ function renderProfile(tab) {
     
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
       <div class="profile-tabs">${tabs.map((t) => `<div class="profile-tab${profileTab === t.id ? " active" : ""}" onclick="renderProfile('${t.id}')">${t.label}</div>`).join("")}</div>
-      <div class="profile-empty">
-        <div class="profile-empty-icon">${e.icon}</div>
-        <h3>${e.title}</h3>
-        <p style="font-size:13px">${e.sub}</p>
+      <div id="profileTabBody">
+        ${tabContent}
       </div>
     </div>
 
@@ -1053,8 +1259,25 @@ function shareProfile() {
 }
 function toggleJoin(btn) {
   if (!requireAuth()) return;
-  const j = btn.classList.toggle("joined");
-  btn.textContent = j ? "Вийти" : "Приєднатись";
+  const user = getCurrentUser();
+  // Отримуємо назву спільноти з сусіднього елемента
+  const communityName = btn.closest('.community-row').querySelector('.community-name').textContent;
+  
+  if (!user.joinedSubs) user.joinedSubs = [];
+
+  const index = user.joinedSubs.indexOf(communityName);
+  if (index === -1) {
+    user.joinedSubs.push(communityName);
+    btn.classList.add("joined");
+    btn.textContent = "Вийти";
+  } else {
+    user.joinedSubs.splice(index, 1);
+    btn.classList.remove("joined");
+    btn.textContent = "Приєднатись";
+  }
+
+  updateStoredUser(user);
+  renderSidebarCommunities(); // Перемальовуємо, щоб оновити список
 }
 function openModal(id) {
   document.getElementById(id).classList.add("open");
@@ -1103,16 +1326,85 @@ const yearElement = document.getElementById("currentYear");
 if (yearElement) yearElement.textContent = new Date().getFullYear();
 
 // ════════════════════════════════════════════
-//  ІНІЦІАЛІЗАЦІЯ
+//  ІНІЦІАЛІЗАЦІЯ ТА МАРШРУТИЗАЦІЯ (ROUTING)
 // ════════════════════════════════════════════
+// Функція, яка перевіряє поточну адресу і відкриває потрібне вікно
+async function handleRoute() {
+  const hash = window.location.hash;
+  
+  if (hash.startsWith("#post-")) {
+    const id = parseInt(hash.replace("#post-", ""));
+    if (id) await openPost(id);
+    
+  } else if (hash === "#profile") {
+    goProfile();
+    
+  } else if (hash.startsWith("#category-")) {
+    const cat = decodeURIComponent(hash.replace("#category-", ""));
+    filterByCategory(cat);
+
+  } else if (hash.startsWith("#admin")) { 
+    // НОВИЙ БЛОК: Логіка для Адмін-панелі
+    const tab = hash.replace("#admin-", "") || "dashboard";
+    
+    if (isAdmin()) {
+      document.getElementById("mainLayout").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
+      switchAdminTab(tab);
+    } else {
+      setPage("home"); // Якщо не адмін — викидаємо на головну
+    }
+    
+  } else {
+    setPage("home");
+  }
+}
+// Дозволяє працювати кнопкам "Назад" / "Вперед" у браузері
+window.addEventListener("hashchange", handleRoute);
+
+
+// ════════════════════════════════════════════
+//  IMAGE PREVIEW
+// ════════════════════════════════════════════
+function previewImage(input) {
+  const preview = document.getElementById("imagePreview");
+  if (!preview) return;
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    // Validate size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Файл занадто великий! Максимум 5 МБ", "error");
+      input.value = "";
+      preview.style.display = "none";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+      preview.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.style.display = "none";
+  }
+}
+window.previewImage = previewImage;
+
 async function initApp() {
   await loadData();
   renderHeader();
-  renderFeed();
+  
+  // Перевіряємо, чи є в посиланні вказівка на конкретне вікно
+  if (window.location.hash) {
+    await handleRoute();
+  } else {
+    // Якщо хешу немає — примусово запускаємо "головну", 
+    // яка тепер сама зробить mainLayout видимим
+    setPage("home"); 
+  }
 }
 
 initApp();
-
 // ════════════════════════════════════════════
 //  ГЛОБАЛЬНИЙ ЕКСПОРТ ДЛЯ VITE
 // ════════════════════════════════════════════
@@ -1155,3 +1447,6 @@ window.showCatForm = showCatForm;
 window.hideCatForm = hideCatForm;
 window.startEditCat = startEditCat;
 window.saveCat = saveCat;
+window.toggleJoinCategory = toggleJoinCategory;
+window.submitContactForm = submitContactForm;
+window.deleteMessage = deleteMessage;
