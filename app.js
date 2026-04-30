@@ -235,17 +235,32 @@ function confirmDeletePost(id) {
 async function deletePost() {
   const id = _pendingDeleteId;
   if (id == null) return;
+
+  // Тимчасово показуємо статус
+  showToast("Видалення...", "info");
+
   const result = await deletePostDb(id);
+  closeModal("deleteConfirmOverlay");
+  _pendingDeleteId = null;
+
   if (result.success) {
     await loadData();
-    closeModal("deleteConfirmOverlay");
-    _pendingDeleteId = null;
-    if (document.getElementById("page-post").classList.contains("active"))
+    
+    const pagePost = document.getElementById("page-post");
+    if (pagePost && pagePost.classList.contains("active")) {
       setPage("home");
-    renderFeed();
-    showToast("🗑️ Пост видалено", "error");
+    } else {
+      // Відновлюємо правильне сортування для сторінки Популярне
+      if (window.location.pathname.toLowerCase().includes("popular.html")) {
+        const sortedPosts = [...posts].sort((a, b) => b.votes - a.votes);
+        renderFeed(sortedPosts);
+      } else {
+        renderFeed();
+      }
+    }
+    showToast("✅ Пост видалено", "success");
   } else {
-    showToast("Помилка видалення!", "error");
+    showToast("❌ Помилка видалення! (Можливо, є коментарі)", "error");
   }
 }
 
@@ -253,21 +268,20 @@ async function deletePost() {
 //  ВІЗУАЛ (РЕНДЕР)
 // ════════════════════════════════════════════
 function renderSidebarCommunities() {
+  const sc = document.getElementById("sidebarCommunities");
+  if (!sc) return; // 🛡️ Щит для лівого меню
+
   const cats = Object.entries(categoryConfig);
   const user = getCurrentUser();
   const joinedSubs = user?.joinedSubs || [];
 
-  // 1. Ліва панель (залишаємо як було - показуємо все)
-  // 1. Ліва панель (показуємо АБСОЛЮТНО ВСІ категорії бази)
   const colors = ["blue", "green", "purple", "", "blue"];
-  document.getElementById("sidebarCommunities").innerHTML = cats.map(([k, v], i) =>
+  sc.innerHTML = cats.map(([k, v], i) =>
         `<div class="nav-item" onclick="filterByCategory('${k}')" style="cursor:pointer"><div class="community-avatar ${colors[i % colors.length]}" style="background:${v.color}20;color:${v.color};border:1px solid ${v.color}40">${v.emoji}</div>${k}</div>`
   ).join("");
 
-  // 2. Права панель (показуємо тільки підписки)
   const rsc = document.getElementById("rightSidebarCommunities");
   if(rsc) {
-    // Фільтруємо категорії: залишаємо тільки ті, що є в масиві joinedSubs
     const myCats = cats.filter(([k, v]) => joinedSubs.includes(k));
 
     if (myCats.length === 0) {
@@ -286,7 +300,6 @@ function renderSidebarCommunities() {
     }).join("");
   }
 }
-
 function renderHeader() {
   const user = getCurrentUser();
   const ha = document.getElementById("headerActions");
@@ -334,10 +347,13 @@ function renderHeader() {
 }
 
 function renderFeed(data) {
+  const feedContainer = document.getElementById("postFeed");
+  // 🛡️ МАГІЧНИЙ ЩИТ: якщо блоку немає, просто виходимо без помилок
+  if (!feedContainer) return; 
+
   const list = data || posts;
   let html = "";
 
-  // Малюємо шапку спільноти, якщо ми знаходимось всередині неї
   if (currentCategory && categoryConfig[currentCategory]) {
     const cat = categoryConfig[currentCategory];
     const user = getCurrentUser();
@@ -360,9 +376,8 @@ function renderFeed(data) {
     </div>`;
   }
 
-  // Додаємо самі пости
   html += list.map((p) => postCard(p)).join("");
-  document.getElementById("postFeed").innerHTML = html || `<div style="text-align:center; padding:40px; color:var(--muted)">Постів ще немає</div>`;
+  feedContainer.innerHTML = html || `<div style="text-align:center; padding:40px; color:var(--muted)">Постів ще немає</div>`;
   
   renderFeatured(list);
   renderSidebarCommunities();
@@ -416,7 +431,7 @@ function postCard(p) {
       </div>
       <div class="post-title">${p.title}</div>
       
-      ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%; max-height:500px; object-fit:contain; background:var(--surface2); border-radius:8px; margin-top:10px; margin-bottom:12px;"/>` : ""}
+     ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%; max-height:500px; object-fit:contain; background:transparent; border-radius:8px; margin-top:10px; margin-bottom:12px;"/>` : ""}
 
       <div class="post-actions">
         <button class="action-btn">💬 ${fmtNum(commentCount)}</button>
@@ -428,81 +443,9 @@ function postCard(p) {
   </div>`;
 }
 
-async function openPost(id) {
-  window.location.hash = "post-" + id;
-  currentPostId = id;
-  const p = posts.find((x) => x.id === id);
-  if (!p) return;
 
-  // ЗАВАНТАЖУЄМО КОМЕНТАРІ З SUPABASE
-  // Переконайтеся, що fetchCommentsDb додана у вашому db.js
-  const comments = await fetchCommentsDb(id);
-
-  const v = voteMap[id] || 0;
-  const auth = isAuthenticated();
-  const user = getCurrentUser();
-  const authorName = getAuthorName(p);
-  const canManage = user && (user.id === p.authorId || isAdmin());
-
-  document.getElementById("postViewContent").innerHTML = `
-    <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      <button class="action-btn" onclick="setPage('home')">← Назад</button>
-      ${canManage ? `<button class="action-btn" style="color:var(--blue);margin-left:auto" onclick="editPost(${p.id})">✏️ Редагувати</button><button class="action-btn" style="color:#ff7043" onclick="confirmDeletePost(${p.id})">🗑️ Видалити</button>` : ""}
-    </div>
-    
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
-      <div style="display:flex">
-        <div class="post-vote" style="padding:16px 0">
-          <button class="vote-btn${v === 1 ? " voted" : ""}" onclick="castVote(${p.id},1);openPost(${p.id})">▲</button>
-          <div class="vote-count">${fmtNum(p.votes + v)}</div>
-          <button class="vote-btn${v === -1 ? " voted" : ""}" onclick="castVote(${p.id},-1);openPost(${p.id})">▼</button>
-        </div>
-        <div style="padding:16px;flex:1">
-          <div class="post-meta" style="margin-bottom:10px">
-            <div class="post-sub" onclick="filterByCategory('${p.sub}')" style="cursor:pointer">
-  <div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>
-  ${p.sub}
-</div>
-            <span class="post-author">Автор: <span>${authorName}</span></span>
-            <span class="post-time">· ${p.time}</span>
-            <span class="flair ${p.flairClass}">${p.flair}</span>
-            ${p.edited ? `<span style="font-size:11px;color:var(--muted)">• редаговано</span>` : ""}
-          </div>
-         <div class="post-title" style="font-size:1.3rem;margin-bottom:12px;line-height:1.5;padding-bottom:4px">${p.title}</div>
-          ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%; max-height:600px; object-fit:contain; background:var(--surface2); border-radius:8px; margin-bottom:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>` : ""}
-          ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${linkify(p.body)}</p>` : ""}
-          <div class="post-actions">
-            <button class="action-btn">💬 ${comments.length}</button>
-            <button class="action-btn" onclick="sharePost(${p.id})">🔗 Поділитись</button>
-            <button class="action-btn" onclick="savePost(${p.id})">🔖 Зберегти</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px" id="commentsSection">
-      <div style="font-weight:700;margin-bottom:12px" id="commentsHeader">💬 Коментарі (${comments.length})</div>
-      ${
-        auth
-          ? `
-        <div style="display:flex;gap:10px;margin-bottom:16px">
-          <div class="user-avatar" style="width:32px;height:32px;flex-shrink:0">${user.name.slice(0, 2).toUpperCase()}</div>
-          <div style="flex:1">
-            <textarea id="commentBox" placeholder="Напишіть коментар…" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;min-height:72px"></textarea>
-            <div style="text-align:right;margin-top:6px"><button class="btn btn-accent" style="border-radius:8px;padding:6px 18px" onclick="postComment(${p.id})">Надіслати</button></div>
-          </div>
-        </div>`
-          : `
-        <div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;color:var(--muted);margin-bottom:16px">
-          <a style="color:var(--blue);cursor:pointer" onclick="openModal('loginOverlay')">Увійдіть</a>, щоб залишити коментар
-        </div>`
-      }
-      <div id="commentsList">
-        ${comments.length === 0 ? `<div style="text-align:center;padding:32px 0;color:var(--muted)">Коментарів ще немає. Будьте першим!</div>` : comments.map((c) => renderComment(c)).join("")}
-      </div>
-    </div>`;
-  setPage("post");
-}
+  
+  // ... далі залишається твій старий код (const comments = await fetchCommentsDb(id); і т.д.)
 
 function renderComment(c) {
   const time = c.created_at
@@ -693,372 +636,6 @@ function savePost(id) {
 }
 
 // ════════════════════════════════════════════
-//  АДМІН-ПАНЕЛЬ
-// ════════════════════════════════════════════
-function openAdminPanel() {
-  if (!isAdmin()) {
-    showToast("Доступ заборонено!", "error");
-    return;
-  }
-  document.getElementById("mainLayout").style.display = "none";
-  document.getElementById("adminPanel").style.display = "block";
-  switchAdminTab("dashboard");
-}
-
-function switchAdminTab(tab) {
-  window.location.hash = "admin-" + tab;
-  document
-    .querySelectorAll(".admin-page")
-    .forEach((p) => p.classList.remove("active"));
-  document
-    .querySelectorAll(".admin-nav-item")
-    .forEach((n) => n.classList.remove("active"));
-  document.getElementById("admin-" + tab).classList.add("active");
-  document.getElementById("atab-" + tab).classList.add("active");
-  
-  if (tab === "dashboard") renderAdminDashboard();
-  else if (tab === "categories") renderAdminCategories();
-  else if (tab === "users") renderAdminUsers();
-  else if (tab === "posts") renderAdminPosts();
-  else if (tab === "messages") renderAdminMessages(); // <-- ЦЕЙ РЯДОК КРИТИЧНО ВАЖЛИВИЙ
-}
-
-function renderAdminDashboard() {
-  document.getElementById("adminRecentPosts").innerHTML =
-    `<table class="admin-table"><thead><tr><th>Заголовок</th><th>Категорія</th><th>Автор</th></tr></thead><tbody>${posts
-      .slice(0, 5)
-      .map(
-        (p) =>
-          `<tr><td>${p.title}</td><td>${p.sub}</td><td>${p.authorName}</td></tr>`,
-      )
-      .join("")}</tbody></table>`;
-}
-
-function renderAdminCategories() {
-  const cats = Object.entries(categoryConfig);
-  document.getElementById("adminCatGrid").innerHTML = cats
-    .map(([key, v]) => {
-      const count = posts.filter((p) => p.sub === key).length;
-      return `<div class="cat-card">
-      <div class="cat-card-top" style="background:${v.color}20">${v.emoji}</div>
-      <div class="cat-card-body">
-        <div class="cat-card-name">${key}</div>
-        <div class="cat-card-footer">
-          <div class="cat-post-count">📝 ${count} постів</div>
-          <div class="cat-card-actions">
-            <button class="tbl-btn primary" onclick="startEditCat('${key}')">✏️</button>
-            <button class="tbl-btn danger" onclick="startDeleteCat('${key}',${count})">🗑️</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-    })
-    .join("");
-}
-
-function showCatForm() {
-  document.getElementById("catFormWrap").style.display = "block";
-  document.getElementById("catFormTitle").textContent = "➕ Нова категорія";
-  document.getElementById("catEditKey").value = "";
-  document.getElementById("catName").value = "";
-  document.getElementById("catEmoji").value = "";
-  document.getElementById("catDesc").value = "";
-  document.getElementById("catColor").value = "";
-}
-
-function hideCatForm() {
-  document.getElementById("catFormWrap").style.display = "none";
-}
-
-function startEditCat(key) {
-  const v = categoryConfig[key];
-  if (!v) return;
-  document.getElementById("catFormWrap").style.display = "block";
-  document.getElementById("catFormTitle").textContent =
-    "✏️ Редагувати категорію";
-  document.getElementById("catEditKey").value = key;
-  document.getElementById("catName").value = key;
-  document.getElementById("catEmoji").value = v.emoji;
-  document.getElementById("catDesc").value = v.desc || "";
-  document.getElementById("catColor").value = v.color;
-  const flairEl = document.getElementById("catFlair");
-  if (flairEl) flairEl.value = v.flair[1] || "flair-tech";
-  document.getElementById("catFormWrap").scrollIntoView({ behavior: "smooth" });
-}
-
-async function saveCat() {
-  const editKey = document.getElementById("catEditKey").value;
-  const name = document.getElementById("catName").value.trim();
-  const emoji = document.getElementById("catEmoji").value.trim() || "📁";
-  const desc = document.getElementById("catDesc").value.trim();
-  const color = document.getElementById("catColor").value.trim() || "#ff4500";
-  const flairClass = document.getElementById("catFlair")?.value || "flair-tech";
-  const flairLabel =
-    flairClass === "flair-cs"
-      ? "Пост"
-      : flairClass === "flair-news"
-        ? "Новини"
-        : "Тема";
-
-  if (!name) {
-    showToast("Введіть назву!", "error");
-    return;
-  }
-  if (!name.startsWith("r/")) {
-    showToast("Назва має починатись з r/", "error");
-    return;
-  }
-
-  if (editKey && editKey !== name) {
-    const hasPosts = posts.some((p) => p.sub === editKey);
-    if (hasPosts) {
-      showToast("Не можна змінити назву, є пости!", "error");
-      return;
-    }
-    await supabase.from("categories").delete().eq("name", editKey);
-  }
-
-  const { error } = await supabase.from("categories").upsert([
-    {
-      name: name,
-      emoji: emoji,
-      color: color,
-      description: desc,
-      flair_label: flairLabel,
-      flair_class: flairClass,
-    },
-  ]);
-
-  if (error) {
-    showToast("Помилка збереження в базу!", "error");
-    return;
-  }
-
-  hideCatForm();
-  await loadData();
-  renderAdminCategories();
-  renderSidebarCommunities();
-  renderHeader();
-  showToast("✅ Категорію збережено!", "success");
-}
-
-function startDeleteCat(key, count) {
-  _pendingDeleteCatKey = key;
-  const msg = document.getElementById("deleteCatMsg");
-  const btn = document.getElementById("deleteCatConfirmBtn");
-  if (count > 0) {
-    msg.innerHTML = `⚠️ У категорії <b>${key}</b> є <b>${count} постів</b>. Спочатку видаліть їх.`;
-    btn.style.display = "none";
-  } else {
-    msg.textContent = `Видалити "${key}"?`;
-    btn.style.display = "";
-  }
-  openModal("deleteCatOverlay");
-}
-
-async function deleteCatConfirmed() {
-  const key = _pendingDeleteCatKey;
-  if (!key) return;
-  const { error } = await supabase.from("categories").delete().eq("name", key);
-  closeModal("deleteCatOverlay");
-  if (!error) {
-    _pendingDeleteCatKey = null;
-    await loadData();
-    renderAdminCategories();
-    renderSidebarCommunities();
-    renderFeed();
-    showToast("🗑️ Категорію видалено", "success");
-  } else {
-    showToast("Помилка видалення!", "error");
-  }
-}
-// Відправка форми з лівого меню
-async function submitContactForm() {
-  const name = document.getElementById("contactName").value.trim();
-  const email = document.getElementById("contactEmail").value.trim();
-  const message = document.getElementById("contactMessage").value.trim();
-
-  if (!name || !email || !message) { showToast("Будь ласка, заповніть всі поля", "error"); return; }
-
-  const result = await submitContactDb({ name, email, message });
-  if (result.success) {
-    showToast("✅ Повідомлення надіслано!", "success");
-    document.getElementById("contactName").value = "";
-    document.getElementById("contactEmail").value = "";
-    document.getElementById("contactMessage").value = "";
-  } else {
-    showToast("Помилка при надсиланні", "error");
-  }
-}
-
-// Відображення звернень в Адмінці
-async function renderAdminMessages() {
-  const msgs = await fetchContactsDb();
-  const countEl = document.getElementById("messagesCount");
-  if (countEl) countEl.textContent = `Всього: ${msgs.length} звернень`;
-
-  const statusColors = {
-    'new': { label: 'Нове', color: 'var(--blue)' },
-    'process': { label: 'В роботі', color: 'var(--yellow)' },
-    'closed': { label: 'Закрито', color: 'var(--muted)' }
-  };
-
-  document.getElementById("messagesTableBody").innerHTML = msgs.map(m => {
-    const date = m.created_at ? new Date(m.created_at).toLocaleString('uk-UA') : "—";
-    const currentStatus = m.status || 'new';
-
-    return `
-      <tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:12px;color:var(--muted);font-size:12px;white-space:nowrap">${date}</td>
-        <td style="padding:12px;font-weight:600">${m.name}</td>
-        <td style="padding:12px;color:var(--blue)">${m.email}</td>
-        <td style="padding:12px;max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${m.message.replace(/"/g, '&quot;')}">${m.message}</td>
-        <td style="padding:12px">
-          <select 
-            onchange="changeMessageStatus(${m.id}, this.value)" 
-            style="background:${statusColors[currentStatus].color}20; color:${statusColors[currentStatus].color}; border:1px solid ${statusColors[currentStatus].color}40; border-radius:12px; padding:4px 8px; font-size:12px; font-weight:600; cursor:pointer; outline:none"
-          >
-            <option value="new" ${currentStatus === 'new' ? 'selected' : ''}>🆕 Нове</option>
-            <option value="process" ${currentStatus === 'process' ? 'selected' : ''}>⚙️ В роботі</option>
-            <option value="closed" ${currentStatus === 'closed' ? 'selected' : ''}>✅ Закрито</option>
-          </select>
-        </td>
-        <td style="padding:12px">
-          <button class="tbl-btn danger" onclick="deleteMessage(${m.id})" title="Видалити">🗑️</button>
-        </td>
-      </tr>
-    `;
-  }).join("");
-}
-
-// Видалення розглянутого звернення
-async function deleteMessage(id) {
-  if (confirm("Видалити це звернення?")) {
-    const result = await deleteContactDb(id);
-    if (result.success) {
-      renderAdminMessages();
-      showToast("🗑️ Звернення видалено", "success");
-    } else {
-      showToast("Помилка видалення", "error");
-    }
-  }
-}
-async function renderAdminUsers() {
-  const usersFromDb = await fetchUsers();
-  const currentU = getCurrentUser();
-
-  const userCountEl = document.getElementById("userCount");
-  if (userCountEl)
-    userCountEl.textContent = `Всього: ${usersFromDb.length} користувачів`;
-
-  document.getElementById("usersTableBody").innerHTML = usersFromDb
-    .map((u) => {
-      const regDate = u.created_at
-        ? new Date(u.created_at).toLocaleDateString("uk-UA")
-        : "—";
-      return `
-    <tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:12px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;${u.role === "superadmin" ? "background:#c0392b;color:#fff" : u.is_admin ? "background:var(--yellow)" : ""}">
-            ${u.name.slice(0, 2).toUpperCase()}
-          </div>
-          <span>${u.name}${u.id === currentU?.id ? ' <span style="font-size:11px;color:var(--muted)">(ви)</span>' : ""}</span>
-        </div>
-      </td>
-      <td style="padding:12px;color:var(--muted)">${u.email}</td>
-      <td style="padding:12px;font-weight:600">⭐ ${u.karma || 0}</td>
-      <td style="padding:12px;color:var(--muted);font-size:13px">${regDate}</td>
-      <td style="padding:12px">
-        <span class="role-badge ${u.role === "superadmin" ? "role-admin" : u.is_admin ? "role-admin" : "role-user"}">
-          ${u.role === "superadmin" ? "Супер Адмін" : u.is_admin ? "Адмін" : "Користувач"}
-        </span>
-      </td>
-      <td style="padding:12px">
-        <div class="table-actions" style="display:flex;gap:6px">
-          ${
-            u.role === "superadmin"
-              ? '<span style="color:var(--muted);font-size:12px">Захищений</span>'
-              : u.id === currentU?.id
-                ? '<span style="color:var(--muted);font-size:12px">Ви</span>'
-                : `
-              ${
-                u.is_admin
-                  ? `<button class="tbl-btn warn" onclick="changeUserRole(${u.id},'user')" title="Зняти права адміна">👤</button>`
-                  : `<button class="tbl-btn primary" onclick="changeUserRole(${u.id},'admin')" title="Надати права адміна">⚙️</button>`
-              }
-              <button class="tbl-btn danger" onclick="deleteUser(${u.id})" title="Видалити користувача">🗑️</button>
-          `
-          }
-        </div>
-      </td>
-    </tr>`;
-    })
-    .join("");
-}
-
-async function changeUserRole(userId, newRole) {
-  const { error } = await supabase
-    .from("users")
-    .update({ role: newRole, is_admin: newRole === "admin" })
-    .eq("id", userId);
-  if (!error) {
-    renderAdminUsers();
-    showToast(`✅ Роль змінено`, "success");
-  } else {
-    showToast(`Помилка зміни ролі`, "error");
-  }
-}
-
-async function deleteUser(userId) {
-  if (confirm("Видалити користувача?")) {
-    const { error } = await supabase.from("users").delete().eq("id", userId);
-    if (!error) {
-      renderAdminUsers();
-      showToast("🗑️ Видалено", "success");
-    } else {
-      showToast("Помилка видалення", "error");
-    }
-  }
-}
-
-function renderAdminPosts() {
-  const postsCountEl = document.getElementById("postsCount");
-  if (postsCountEl) postsCountEl.textContent = `Всього: ${posts.length} постів`;
-
-  document.getElementById("postsTableBody").innerHTML = posts
-    .map(
-      (p) => `
-    <tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:12px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;padding-bottom:14px" title="${p.title.replace(/"/g, "&quot;")}">
-        <b>${p.title}</b>
-      </td>
-      <td style="padding:12px">
-  <span 
-    onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; filterByCategory('${p.sub}')" 
-    style="background:${p.subColor}20; color:${p.subColor}; padding:4px 8px; border-radius:12px; font-size:12px; white-space:nowrap; cursor:pointer"
-  >
-    ${p.emoji} ${p.sub}
-  </span>
-</td>
-        </span>
-      </td>
-      <td style="padding:12px;color:var(--text)">${p.authorName}</td>
-      <td style="padding:12px;font-weight:600;color:#ff4500">▲ ${p.votes}</td>
-      <td style="padding:12px;color:var(--muted)">💬 ${p.comments}</td>
-      <td style="padding:12px">
-        <div class="table-actions" style="display:flex;gap:6px">
-          <button class="tbl-btn primary" onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; editPost(${p.id})" title="Редагувати пост">✏️</button>
-          <button class="tbl-btn danger" onclick="confirmDeletePost(${p.id})" title="Видалити пост">🗑️</button>
-        </div>
-      </td>
-    </tr>
-  `,
-    )
-    .join("");
-}
-
-// ════════════════════════════════════════════
 //  ДОПОМІЖНІ ФУНКЦІЇ ТА НАВІГАЦІЯ
 // ════════════════════════════════════════════
 // Палітра яскравих кольорів для аватарок
@@ -1138,12 +715,28 @@ function handleSearch(q) {
 }
 
 function filterByCategory(cat) {
+  // 1. Перенаправлення: якщо ми не на головній сторінці, йдемо туди
+  const path = window.location.pathname.toLowerCase();
+  if (!path.includes("index.html") && path !== "/" && path !== "") {
+    window.location.href = "index.html#category-" + encodeURIComponent(cat);
+    return;
+  }
+
+  // 2. Стандартна логіка для головної сторінки
   window.location.hash = "category-" + encodeURIComponent(cat);
-  currentCategory = cat; // Запам'ятовуємо відкриту категорію
-  document.getElementById("adminPanel").style.display = "none";
-  document.getElementById("mainLayout").style.display = "";
+  currentCategory = cat; 
+  
+  // 🛡️ МАГІЧНІ ЩИТИ (щоб не ламався код, якщо елемента немає)
+  const adminPanel = document.getElementById("adminPanel");
+  if (adminPanel) adminPanel.style.display = "none";
+  
+  const mainLayout = document.getElementById("mainLayout");
+  if (mainLayout) mainLayout.style.display = "";
+  
   document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
-  document.getElementById("page-home").classList.add("active");
+  const pageHome = document.getElementById("page-home");
+  if (pageHome) pageHome.classList.add("active");
+  
   window.scrollTo(0, 0);
   
   // Рендеримо тільки пости цієї категорії
@@ -1168,129 +761,8 @@ function setSort(btn, type) {
   
   renderFeed(basePosts);
 }
-function setPage(name) {
-  // 1. ЗАВЖДИ робимо каркас сайту видимим, а адмінку ховаємо 
-  // (незалежно від того, пост це, профіль чи головна сторінка)
-  document.getElementById("adminPanel").style.display = "none";
-  document.getElementById("mainLayout").style.display = "";
 
-  // 2. Очищення даних тільки якщо ми повертаємось на головну
-  if (name === "home") {
-    window.history.replaceState(null, null, window.location.pathname);
-    currentPostId = null;
-    currentCategory = null; 
-    renderFeed(); 
-  }
-  
-  // 3. Перемикання вкладок
-  document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
-  (document.getElementById("page-" + name) || document.getElementById("page-home"))?.classList.add("active");
-  window.scrollTo(0, 0);
-}
 
-let profileTab = "overview";
-function goProfile() {
-  if (!requireAuth()) return;
-  window.location.hash = "profile";
-  renderProfile("overview");
-  setPage("profile");
-}
-async function renderProfile(tab) {
-  if (tab) profileTab = tab;
-  const user = getCurrentUser();
-  if (!user) return;
-
-  const ini = user.name.slice(0, 2).toUpperCase();
-  const uColor = getUserColor(user.name);
-  const handle = "u/" + user.name.toLowerCase().replace(/\s+/g, "_");
-  const tabs = [
-    { id: "overview", label: "Огляд" },
-    { id: "posts", label: "Пости" },
-    { id: "comments", label: "Коментарі" },
-  ];
-
-  // 1. Фільтруємо пости користувача з глобального масиву
-  const userPosts = posts.filter(p => p.authorId === user.id);
-  
-  // 2. Завантажуємо коментарі користувача з бази
-  const userComments = await fetchUserCommentsDb(user.id);
-
-  // 3. Формуємо контент для активної вкладки
-  let tabContent = "";
-  if (profileTab === "posts") {
-    tabContent = userPosts.length > 0 
-      ? userPosts.map(p => postCard(p)).join("") 
-      : `<div class="profile-empty"><h3>Постів ще немає</h3><p>Ви ще не опублікували жодного поста.</p></div>`;
-      
-  } else if (profileTab === "comments") {
-    tabContent = userComments.length > 0 
-      ? `<div style="padding:8px 16px">${userComments.map(c => {
-          // Шукаємо пост, до якого належить коментар
-          const p = posts.find(post => post.id === c.post_id);
-          
-          // Створюємо рядок з назвою поста
-          const postHeader = p 
-            ? `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">
-                 До поста: <a style="color:var(--blue); cursor:pointer; font-weight:600; text-decoration:underline" onclick="openPost(${p.id})">${p.title}</a>
-               </div>` 
-            : `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">Пост видалено або недоступний</div>`;
-
-          return `
-            <div style="border-bottom:1px solid var(--border); padding:16px 0; animation: fadeIn 0.3s ease both">
-              ${postHeader}
-              ${renderComment(c)}
-            </div>`;
-        }).join("")}</div>` 
-      : `<div class="profile-empty"><h3>Коментарів ще немає</h3><p>Ви ще не залишили жодного коментаря.</p></div>`;
-      
-  } else {
-    // Вкладка "Огляд" (Overview)
-    tabContent = userPosts.length > 0 
-      ? `<div style="padding:10px 0; border-bottom:1px solid var(--border); margin-bottom:10px; font-weight:700; padding-left:16px">Останні пости</div>` + userPosts.slice(0, 3).map(p => postCard(p)).join("")
-      : `<div class="profile-empty"><h3>Активності немає</h3><p>Тут з'являться ваші останні дії.</p></div>`;
-  }
-
-  // 4. Рендеримо всю сторінку профілю
-  document.getElementById("profileContent").innerHTML = `
-    <div class="profile-header-card">
-      <div class="profile-banner"></div>
-      <div class="profile-avatar-wrap">
-        <div class="profile-avatar-big" style="background:${uColor}">${ini}</div>
-      </div>
-      <div class="profile-info-row">
-        <div>
-          <div class="profile-name">${user.name}${isAdmin() ? '<span class="admin-badge">АДМІН</span>' : ""}</div>
-          <div class="profile-handle">${handle}</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost" style="border-radius:8px" onclick="shareProfile()">🔗 Поділитись</button>
-          ${isAdmin() ? `<button class="btn btn-admin" style="border-radius:8px" onclick="openAdminPanel()">⚙️ Адмін панель</button>` : ""}
-        </div>
-      </div>
-    </div>
-    
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
-      <div class="profile-tabs">${tabs.map((t) => `<div class="profile-tab${profileTab === t.id ? " active" : ""}" onclick="renderProfile('${t.id}')">${t.label}</div>`).join("")}</div>
-      <div id="profileTabBody">
-        ${tabContent}
-      </div>
-    </div>
-
-    <div class="profile-layout">
-      <div></div>
-      <div>
-        <div class="widget">
-          <div class="widget-header">📊 Статистика</div>
-          <div class="widget-body" style="padding:8px 14px">
-            <div class="profile-stat-row"><span class="profile-stat-label">Карма</span><span style="font-weight:700">⭐ ${user.karma || 0}</span></div>
-            <div class="profile-stat-row"><span class="profile-stat-label">Внески</span><span style="font-weight:700">${user.contributions || 0}</span></div>
-            <div class="profile-stat-row"><span class="profile-stat-label">Зареєстрований</span><span style="font-weight:700">з ${user.created_at ? new Date(user.created_at).toLocaleDateString("uk-UA") : new Date().getFullYear()}</span></div>
-            <div class="profile-stat-row"><span class="profile-stat-label">Роль</span><span style="font-weight:700;color:${isAdmin() ? "var(--yellow)" : "var(--green)"}">${isAdmin() ? "Адмін" : "Користувач"}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-}
 
 function fmtNum(n) {
   return n >= 1000 ? (n / 1000).toFixed(1) + "K" : n;
@@ -1384,36 +856,7 @@ if (yearElement) yearElement.textContent = new Date().getFullYear();
 //  ІНІЦІАЛІЗАЦІЯ ТА МАРШРУТИЗАЦІЯ (ROUTING)
 // ════════════════════════════════════════════
 // Функція, яка перевіряє поточну адресу і відкриває потрібне вікно
-async function handleRoute() {
-  const hash = window.location.hash;
-  
-  if (hash.startsWith("#post-")) {
-    const id = parseInt(hash.replace("#post-", ""));
-    if (id) await openPost(id);
-    
-  } else if (hash === "#profile") {
-    goProfile();
-    
-  } else if (hash.startsWith("#category-")) {
-    const cat = decodeURIComponent(hash.replace("#category-", ""));
-    filterByCategory(cat);
 
-  } else if (hash.startsWith("#admin")) { 
-    // НОВИЙ БЛОК: Логіка для Адмін-панелі
-    const tab = hash.replace("#admin-", "") || "dashboard";
-    
-    if (isAdmin()) {
-      document.getElementById("mainLayout").style.display = "none";
-      document.getElementById("adminPanel").style.display = "block";
-      switchAdminTab(tab);
-    } else {
-      setPage("home"); // Якщо не адмін — викидаємо на головну
-    }
-    
-  } else {
-    setPage("home");
-  }
-}
 // Дозволяє працювати кнопкам "Назад" / "Вперед" у браузері
 window.addEventListener("hashchange", handleRoute);
 
@@ -1422,7 +865,6 @@ window.addEventListener("hashchange", handleRoute);
 //  IMAGE PREVIEW
 // ════════════════════════════════════════════
 function previewImage(input) {
-  // Використовуємо ID, який реально є у вашому index.html
   const preview = document.getElementById("imagePreview");
   if (!preview) return;
   
@@ -1446,17 +888,603 @@ function previewImage(input) {
 }
 window.previewImage = previewImage;
 
+// ════════════════════════════════════════════
+//  НАВІГАЦІЯ ТА РОУТИНГ (ІДЕАЛЬНИЙ БЛОК)
+// ════════════════════════════════════════════
+async function openPost(id) {
+  // 🛡️ МАГІЧНИЙ ЩИТ
+  const pv = document.getElementById("postViewContent");
+  if (!pv) {
+    window.location.href = "index.html#post-" + id;
+    return;
+  }
+
+  window.location.hash = "post-" + id;
+  currentPostId = id;
+  const p = posts.find((x) => x.id === id);
+  if (!p) return;
+
+  const comments = await fetchCommentsDb(id);
+  const v = voteMap[id] || 0;
+  const auth = isAuthenticated();
+  const user = getCurrentUser();
+  const authorName = getAuthorName(p);
+  const canManage = user && (user.id === p.authorId || isAdmin());
+
+  pv.innerHTML = `
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <button class="action-btn" onclick="setPage('home')">← Назад</button>
+      ${canManage ? `<button class="action-btn" style="color:var(--blue);margin-left:auto" onclick="editPost(${p.id})">✏️ Редагувати</button><button class="action-btn" style="color:#ff7043" onclick="confirmDeletePost(${p.id})">🗑️ Видалити</button>` : ""}
+    </div>
+    
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
+      <div style="display:flex">
+        <div class="post-vote" style="padding:16px 0">
+          <button class="vote-btn${v === 1 ? " voted" : ""}" onclick="castVote(${p.id},1);openPost(${p.id})">▲</button>
+          <div class="vote-count">${fmtNum(p.votes + v)}</div>
+          <button class="vote-btn${v === -1 ? " voted" : ""}" onclick="castVote(${p.id},-1);openPost(${p.id})">▼</button>
+        </div>
+        <div style="padding:16px;flex:1">
+          <div class="post-meta" style="margin-bottom:10px">
+            <div class="post-sub" onclick="filterByCategory('${p.sub}')" style="cursor:pointer">
+              <div class="sub-icon" style="background:${p.subColor}">${p.sub[2].toUpperCase()}</div>
+              ${p.sub}
+            </div>
+            <span class="post-author">Автор: <span>${authorName}</span></span>
+            <span class="post-time">· ${p.time}</span>
+            <span class="flair ${p.flairClass}">${p.flair}</span>
+            ${p.edited ? `<span style="font-size:11px;color:var(--muted)">• редаговано</span>` : ""}
+          </div>
+         <div class="post-title" style="font-size:1.3rem;margin-bottom:12px;line-height:1.5;padding-bottom:4px">${p.title}</div>
+          ${p.image_url ? `<img src="${p.image_url}" alt="Post image" style="width:100%; max-height:600px; object-fit:contain; background:transparent; border-radius:8px; margin-bottom:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"/>` : ""}
+          ${p.body ? `<p style="line-height:1.7;margin-bottom:14px">${linkify(p.body)}</p>` : ""}
+          <div class="post-actions">
+            <button class="action-btn">💬 ${comments.length}</button>
+            <button class="action-btn" onclick="sharePost(${p.id})">🔗 Поділитись</button>
+            <button class="action-btn" onclick="savePost(${p.id})">🔖 Зберегти</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px" id="commentsSection">
+      <div style="font-weight:700;margin-bottom:12px" id="commentsHeader">💬 Коментарі (${comments.length})</div>
+      ${
+        auth
+          ? `
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <div class="user-avatar" style="width:32px;height:32px;flex-shrink:0">${user.name.slice(0, 2).toUpperCase()}</div>
+          <div style="flex:1">
+            <textarea id="commentBox" placeholder="Напишіть коментар…" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;min-height:72px"></textarea>
+            <div style="text-align:right;margin-top:6px"><button class="btn btn-accent" style="border-radius:8px;padding:6px 18px" onclick="postComment(${p.id})">Надіслати</button></div>
+          </div>
+        </div>`
+          : `
+        <div style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;color:var(--muted);margin-bottom:16px">
+          <a style="color:var(--blue);cursor:pointer" onclick="openModal('loginOverlay')">Увійдіть</a>, щоб залишити коментар
+        </div>`
+      }
+      <div id="commentsList">
+        ${comments.length === 0 ? `<div style="text-align:center;padding:32px 0;color:var(--muted)">Коментарів ще немає. Будьте першим!</div>` : comments.map((c) => renderComment(c)).join("")}
+      </div>
+    </div>`;
+  setPage("post");
+}
+
+function setPage(name) {
+  const adminPanel = document.getElementById("adminPanel");
+  if (adminPanel) adminPanel.style.display = "none";
+  
+  const mainLayout = document.getElementById("mainLayout");
+  if (mainLayout) mainLayout.style.display = "";
+
+  if (name === "home") {
+    window.history.replaceState(null, null, window.location.pathname);
+    currentPostId = null;
+    currentCategory = null; 
+    
+    if (window.location.pathname.toLowerCase().includes("popular.html")) {
+      const sortedPosts = [...posts].sort((a, b) => b.votes - a.votes);
+      renderFeed(sortedPosts);
+    } else {
+      renderFeed(); 
+    }
+  }
+  
+  document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+  const targetPage = document.getElementById("page-" + name) || document.getElementById("page-home");
+  if (targetPage) targetPage.classList.add("active");
+  
+  window.scrollTo(0, 0);
+}
+
+// ════════════════════════════════════════════
+//  ПРОФІЛЬ КОРИСТУВАЧА
+// ════════════════════════════════════════════
+let profileTab = "overview"; // 🏆 ОСЬ ВОНА, НАША ЗГУБЛЕНА ЗМІННА!
+
+function goProfile() {
+  if (!requireAuth()) return;
+  const pc = document.getElementById("profileContent");
+  if (!pc) {
+    window.location.href = "index.html#profile";
+    return;
+  }
+  window.location.hash = "profile";
+  renderProfile("overview");
+  setPage("profile");
+}
+
+async function renderProfile(tab) {
+  if (tab) profileTab = tab;
+  const user = getCurrentUser();
+  if (!user) return;
+
+  const ini = user.name.slice(0, 2).toUpperCase();
+  const uColor = getUserColor(user.name);
+  const handle = "u/" + user.name.toLowerCase().replace(/\s+/g, "_");
+  const tabs = [
+    { id: "overview", label: "Огляд" },
+    { id: "posts", label: "Пости" },
+    { id: "comments", label: "Коментарі" },
+  ];
+
+  // 1. Фільтруємо пости користувача
+  const userPosts = posts.filter(p => p.authorId === user.id);
+  
+  // 2. Завантажуємо коментарі
+  const userComments = await fetchUserCommentsDb(user.id);
+
+  // 3. Формуємо контент вкладки
+  let tabContent = "";
+  if (profileTab === "posts") {
+    tabContent = userPosts.length > 0 
+      ? userPosts.map(p => postCard(p)).join("") 
+      : `<div class="profile-empty"><h3>Постів ще немає</h3><p>Ви ще не опублікували жодного поста.</p></div>`;
+      
+  } else if (profileTab === "comments") {
+    tabContent = userComments.length > 0 
+      ? `<div style="padding:8px 16px">${userComments.map(c => {
+          const p = posts.find(post => post.id === c.post_id);
+          const postHeader = p 
+            ? `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">
+                 До поста: <a style="color:var(--blue); cursor:pointer; font-weight:600; text-decoration:underline" onclick="openPost(${p.id})">${p.title}</a>
+               </div>` 
+            : `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">Пост видалено або недоступний</div>`;
+
+          return `
+            <div style="border-bottom:1px solid var(--border); padding:16px 0; animation: fadeIn 0.3s ease both">
+              ${postHeader}
+              ${renderComment(c)}
+            </div>`;
+        }).join("")}</div>` 
+      : `<div class="profile-empty"><h3>Коментарів ще немає</h3><p>Ви ще не залишили жодного коментаря.</p></div>`;
+      
+  } else {
+    // Вкладка "Огляд"
+    tabContent = userPosts.length > 0 
+      ? `<div style="padding:10px 0; border-bottom:1px solid var(--border); margin-bottom:10px; font-weight:700; padding-left:16px">Останні пости</div>` + userPosts.slice(0, 3).map(p => postCard(p)).join("")
+      : `<div class="profile-empty"><h3>Активності немає</h3><p>Тут з'являться ваші останні дії.</p></div>`;
+  }
+
+  // 4. Рендеримо профіль
+  document.getElementById("profileContent").innerHTML = `
+    <div class="profile-header-card">
+      <div class="profile-banner"></div>
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar-big" style="background:${uColor}">${ini}</div>
+      </div>
+      <div class="profile-info-row">
+        <div>
+          <div class="profile-name">${user.name}${isAdmin() ? '<span class="admin-badge">АДМІН</span>' : ""}</div>
+          <div class="profile-handle">${handle}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" style="border-radius:8px" onclick="shareProfile()">🔗 Поділитись</button>
+          ${isAdmin() ? `<button class="btn btn-admin" style="border-radius:8px" onclick="openAdminPanel()">⚙️ Адмін панель</button>` : ""}
+        </div>
+      </div>
+    </div>
+    
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
+      <div class="profile-tabs">${tabs.map((t) => `<div class="profile-tab${profileTab === t.id ? " active" : ""}" onclick="renderProfile('${t.id}')">${t.label}</div>`).join("")}</div>
+      <div id="profileTabBody">
+        ${tabContent}
+      </div>
+    </div>
+
+    <div class="profile-layout">
+      <div></div>
+      <div>
+        <div class="widget">
+          <div class="widget-header">📊 Статистика</div>
+          <div class="widget-body" style="padding:8px 14px">
+            <div class="profile-stat-row"><span class="profile-stat-label">Карма</span><span style="font-weight:700">⭐ ${user.karma || 0}</span></div>
+            <div class="profile-stat-row"><span class="profile-stat-label">Внески</span><span style="font-weight:700">${user.contributions || 0}</span></div>
+            <div class="profile-stat-row"><span class="profile-stat-label">Зареєстрований</span><span style="font-weight:700">з ${user.created_at ? new Date(user.created_at).toLocaleDateString("uk-UA") : new Date().getFullYear()}</span></div>
+            <div class="profile-stat-row"><span class="profile-stat-label">Роль</span><span style="font-weight:700;color:${isAdmin() ? "var(--yellow)" : "var(--green)"}">${isAdmin() ? "Адмін" : "Користувач"}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openAdminPanel() {
+  if (!isAdmin()) {
+    showToast("Доступ заборонено!", "error");
+    return;
+  }
+  // Просто перенаправляємо на нову сторінку!
+  window.location.href = "admin.html#admin-dashboard";
+}
+async function handleRoute() {
+  const hash = window.location.hash;
+  const path = window.location.pathname.toLowerCase();
+  
+  if (hash.startsWith("#post-")) {
+    const id = parseInt(hash.replace("#post-", ""));
+    if (id) await openPost(id);
+  } else if (hash === "#profile") {
+    goProfile();
+  } else if (hash.startsWith("#category-")) {
+    const cat = decodeURIComponent(hash.replace("#category-", ""));
+    filterByCategory(cat);
+  } else if (hash.startsWith("#admin")) { 
+    const tab = hash.replace("#admin-", "") || "dashboard";
+    if (isAdmin()) {
+      // 🛡️ Якщо ми НЕ на admin.html, йдемо туди!
+      if (!path.includes("admin.html")) {
+        window.location.href = "admin.html" + hash;
+        return;
+      }
+      
+      // Якщо ми вже на admin.html — спокійно малюємо таблиці
+      const adminPanel = document.getElementById("adminPanel");
+      if (adminPanel) {
+        adminPanel.style.display = "block";
+        switchAdminTab(tab);
+      }
+    } else {
+      window.location.href = "index.html"; // Не адмін? Кидаємо на головну
+    }
+  } else {
+    // Захист від пустих сторінок
+    if (!path.includes("popular") && !path.includes("categor") && !path.includes("contact") && !path.includes("admin")) {
+      setPage("home");
+    }
+  }
+}
+
+function switchAdminTab(tab) {
+  window.location.hash = "admin-" + tab;
+  document.querySelectorAll(".admin-page").forEach((p) => p.classList.remove("active"));
+  document.querySelectorAll(".admin-nav-item").forEach((n) => n.classList.remove("active"));
+  
+  const page = document.getElementById("admin-" + tab);
+  const navItem = document.getElementById("atab-" + tab);
+  if(page) page.classList.add("active");
+  if(navItem) navItem.classList.add("active");
+  
+  if (tab === "dashboard") renderAdminDashboard();
+  else if (tab === "categories") renderAdminCategories();
+  else if (tab === "users") renderAdminUsers();
+  else if (tab === "posts") renderAdminPosts();
+  else if (tab === "messages") renderAdminMessages();
+}
+
+function renderAdminDashboard() {
+  const rp = document.getElementById("adminRecentPosts");
+  if(!rp) return;
+  rp.innerHTML = `<table class="admin-table"><thead><tr><th>Заголовок</th><th>Категорія</th><th>Автор</th></tr></thead><tbody>${posts.slice(0, 5).map((p) => `<tr><td>${p.title}</td><td>${p.sub}</td><td>${p.authorName}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function renderAdminCategories() {
+  const cats = Object.entries(categoryConfig);
+  const grid = document.getElementById("adminCatGrid");
+  if(!grid) return;
+  grid.innerHTML = cats.map(([key, v]) => {
+    const count = posts.filter((p) => p.sub === key).length;
+    return `<div class="cat-card">
+      <div class="cat-card-top" style="background:${v.color}20">${v.emoji}</div>
+      <div class="cat-card-body">
+        <div class="cat-card-name">${key}</div>
+        <div class="cat-card-footer">
+          <div class="cat-post-count">📝 ${count} постів</div>
+          <div class="cat-card-actions">
+            <button class="tbl-btn primary" onclick="startEditCat('${key}')">✏️</button>
+            <button class="tbl-btn danger" onclick="startDeleteCat('${key}',${count})">🗑️</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function showCatForm() {
+  document.getElementById("catFormWrap").style.display = "block";
+  document.getElementById("catFormTitle").textContent = "➕ Нова категорія";
+  document.getElementById("catEditKey").value = "";
+  document.getElementById("catName").value = "";
+  document.getElementById("catEmoji").value = "";
+  document.getElementById("catDesc").value = "";
+  document.getElementById("catColor").value = "";
+}
+
+function hideCatForm() {
+  document.getElementById("catFormWrap").style.display = "none";
+}
+
+function startEditCat(key) {
+  const v = categoryConfig[key];
+  if (!v) return;
+  document.getElementById("catFormWrap").style.display = "block";
+  document.getElementById("catFormTitle").textContent = "✏️ Редагувати категорію";
+  document.getElementById("catEditKey").value = key;
+  document.getElementById("catName").value = key;
+  document.getElementById("catEmoji").value = v.emoji;
+  document.getElementById("catDesc").value = v.desc || "";
+  document.getElementById("catColor").value = v.color;
+  const flairEl = document.getElementById("catFlair");
+  if (flairEl) flairEl.value = v.flair[1] || "flair-tech";
+  document.getElementById("catFormWrap").scrollIntoView({ behavior: "smooth" });
+}
+
+async function saveCat() {
+  const editKey = document.getElementById("catEditKey").value;
+  const name = document.getElementById("catName").value.trim();
+  const emoji = document.getElementById("catEmoji").value.trim() || "📁";
+  const desc = document.getElementById("catDesc").value.trim();
+  const color = document.getElementById("catColor").value.trim() || "#ff4500";
+  const flairClass = document.getElementById("catFlair")?.value || "flair-tech";
+  const flairLabel = flairClass === "flair-cs" ? "Пост" : flairClass === "flair-news" ? "Новини" : "Тема";
+
+  if (!name || !name.startsWith("r/")) {
+    showToast("Назва має починатись з r/ та не бути порожньою!", "error");
+    return;
+  }
+
+  if (editKey && editKey !== name) {
+    const hasPosts = posts.some((p) => p.sub === editKey);
+    if (hasPosts) {
+      showToast("Не можна змінити назву, є пости!", "error");
+      return;
+    }
+    await supabase.from("categories").delete().eq("name", editKey);
+  }
+
+  const { error } = await supabase.from("categories").upsert([{
+    name: name, emoji: emoji, color: color, description: desc, flair_label: flairLabel, flair_class: flairClass
+  }]);
+
+  if (error) { showToast("Помилка збереження в базу!", "error"); return; }
+
+  hideCatForm();
+  await loadData();
+  renderAdminCategories();
+  renderSidebarCommunities();
+  renderHeader();
+  showToast("✅ Категорію збережено!", "success");
+}
+
+function startDeleteCat(key, count) {
+  _pendingDeleteCatKey = key;
+  const msg = document.getElementById("deleteCatMsg");
+  const btn = document.getElementById("deleteCatConfirmBtn");
+  if (count > 0) {
+    msg.innerHTML = `⚠️ У категорії <b>${key}</b> є <b>${count} постів</b>. Спочатку видаліть їх.`;
+    btn.style.display = "none";
+  } else {
+    msg.textContent = `Видалити "${key}"?`;
+    btn.style.display = "";
+  }
+  openModal("deleteCatOverlay");
+}
+
+async function deleteCatConfirmed() {
+  const key = _pendingDeleteCatKey;
+  if (!key) return;
+  const { error } = await supabase.from("categories").delete().eq("name", key);
+  closeModal("deleteCatOverlay");
+  if (!error) {
+    _pendingDeleteCatKey = null;
+    await loadData();
+    renderAdminCategories();
+    renderSidebarCommunities();
+    renderFeed();
+    showToast("🗑️ Категорію видалено", "success");
+  } else {
+    showToast("Помилка видалення!", "error");
+  }
+}
+
+async function submitContactForm() {
+  const name = document.getElementById("contactName").value.trim();
+  const email = document.getElementById("contactEmail").value.trim();
+  const message = document.getElementById("contactMessage").value.trim();
+
+  if (!name || !email || !message) { showToast("Будь ласка, заповніть всі поля", "error"); return; }
+
+  const result = await submitContactDb({ name, email, message });
+  if (result.success) {
+    showToast("✅ Повідомлення надіслано!", "success");
+    document.getElementById("contactName").value = "";
+    document.getElementById("contactEmail").value = "";
+    document.getElementById("contactMessage").value = "";
+  } else {
+    showToast("Помилка при надсиланні", "error");
+  }
+}
+
+async function renderAdminMessages() {
+  const msgs = await fetchContactsDb();
+  const countEl = document.getElementById("messagesCount");
+  if (countEl) countEl.textContent = `Всього: ${msgs.length} звернень`;
+
+  // 🎨 Наші оновлені кольори (Зелений для закритого!)
+  const statusColors = {
+    'new': { label: 'Нове', color: 'var(--blue)' },
+    'process': { label: 'В роботі', color: 'var(--yellow)' },
+    'closed': { label: 'Закрито', color: 'var(--green)' } 
+  };
+
+  const tb = document.getElementById("messagesTableBody");
+  if(!tb) return;
+  
+  tb.innerHTML = msgs.map(m => {
+    const date = m.created_at ? new Date(m.created_at).toLocaleString('uk-UA') : "—";
+    const currentStatus = m.status || 'new';
+    const s = statusColors[currentStatus];
+
+    return `
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:12px;color:var(--muted);font-size:12px;white-space:nowrap">${date}</td>
+        <td style="padding:12px;font-weight:600">${m.name}</td>
+        <td style="padding:12px;color:var(--blue)">${m.email}</td>
+        <td style="padding:12px;max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${m.message.replace(/"/g, '&quot;')}">${m.message}</td>
+        <td style="padding:12px">
+          <!-- 🔽 Повертаємо список зі стрілочкою, але з динамічним кольором -->
+          <select 
+            onchange="changeMessageStatus(${m.id}, this.value)" 
+            style="background:${s.color}20; color:${s.color}; border:1px solid ${s.color}40; border-radius:12px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; outline:none;"
+          >
+            <option value="new" style="color:var(--text); background:var(--bg);" ${currentStatus === 'new' ? 'selected' : ''}>Нове</option>
+            <option value="process" style="color:var(--text); background:var(--bg);" ${currentStatus === 'process' ? 'selected' : ''}>В роботі</option>
+            <option value="closed" style="color:var(--text); background:var(--bg);" ${currentStatus === 'closed' ? 'selected' : ''}>Закрито</option>
+          </select>
+        </td>
+        <td style="padding:12px"><button class="tbl-btn danger" onclick="deleteMessage(${m.id})" title="Видалити">🗑️</button></td>
+      </tr>
+    `;
+  }).join("");
+}
+// Функція збереження статусу з випадаючого списку
+async function changeMessageStatus(id, newStatus) {
+  // Відправляємо в БД (функція updateContactStatusDb підключена зверху файлу)
+  const result = await updateContactStatusDb(id, newStatus);
+  
+  if (result && result.success) {
+    renderAdminMessages(); // Перемальовуємо, щоб весь Select змінив свій колір
+    showToast("✅ Статус оновлено!", "success");
+  } else {
+    showToast("Помилка зміни статусу", "error");
+  }
+}
+async function deleteMessage(id) {
+  if (confirm("Видалити це звернення?")) {
+    const result = await deleteContactDb(id);
+    if (result.success) {
+      renderAdminMessages();
+      showToast("🗑️ Звернення видалено", "success");
+    } else {
+      showToast("Помилка видалення", "error");
+    }
+  }
+}
+
+async function renderAdminUsers() {
+  const usersFromDb = await fetchUsers();
+  const currentU = getCurrentUser();
+
+  const userCountEl = document.getElementById("userCount");
+  if (userCountEl) userCountEl.textContent = `Всього: ${usersFromDb.length} користувачів`;
+
+  const tb = document.getElementById("usersTableBody");
+  if(!tb) return;
+  tb.innerHTML = usersFromDb.map((u) => {
+    const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString("uk-UA") : "—";
+    return `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;${u.role === "superadmin" ? "background:#c0392b;color:#fff" : u.is_admin ? "background:var(--yellow)" : ""}">
+            ${u.name.slice(0, 2).toUpperCase()}
+          </div>
+          <span>${u.name}${u.id === currentU?.id ? ' <span style="font-size:11px;color:var(--muted)">(ви)</span>' : ""}</span>
+        </div>
+      </td>
+      <td style="padding:12px;color:var(--muted)">${u.email}</td>
+      <td style="padding:12px;font-weight:600">⭐ ${u.karma || 0}</td>
+      <td style="padding:12px;color:var(--muted);font-size:13px">${regDate}</td>
+      <td style="padding:12px">
+        <span class="role-badge ${u.role === "superadmin" ? "role-admin" : u.is_admin ? "role-admin" : "role-user"}">
+          ${u.role === "superadmin" ? "Супер Адмін" : u.is_admin ? "Адмін" : "Користувач"}
+        </span>
+      </td>
+      <td style="padding:12px">
+        <div class="table-actions" style="display:flex;gap:6px">
+          ${u.role === "superadmin" ? '<span style="color:var(--muted);font-size:12px">Захищений</span>' : u.id === currentU?.id ? '<span style="color:var(--muted);font-size:12px">Ви</span>' : `${u.is_admin ? `<button class="tbl-btn warn" onclick="changeUserRole(${u.id},'user')" title="Зняти права адміна">👤</button>` : `<button class="tbl-btn primary" onclick="changeUserRole(${u.id},'admin')" title="Надати права адміна">⚙️</button>`}<button class="tbl-btn danger" onclick="deleteUser(${u.id})" title="Видалити користувача">🗑️</button>`}
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function changeUserRole(userId, newRole) {
+  const { error } = await supabase.from("users").update({ role: newRole, is_admin: newRole === "admin" }).eq("id", userId);
+  if (!error) { renderAdminUsers(); showToast(`✅ Роль змінено`, "success"); } 
+  else { showToast(`Помилка зміни ролі`, "error"); }
+}
+
+async function deleteUser(userId) {
+  if (confirm("Видалити користувача?")) {
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (!error) { renderAdminUsers(); showToast("🗑️ Видалено", "success"); } 
+    else { showToast("Помилка видалення", "error"); }
+  }
+}
+
+function renderAdminPosts() {
+  const postsCountEl = document.getElementById("postsCount");
+  if (postsCountEl) postsCountEl.textContent = `Всього: ${posts.length} постів`;
+
+  const tb = document.getElementById("postsTableBody");
+  if(!tb) return;
+  tb.innerHTML = posts.map((p) => `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:12px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;padding-bottom:14px" title="${p.title.replace(/"/g, "&quot;")}">
+        <b>${p.title}</b>
+      </td>
+      <td style="padding:12px">
+        <span onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; filterByCategory('${p.sub}')" style="background:${p.subColor}20; color:${p.subColor}; padding:4px 8px; border-radius:12px; font-size:12px; white-space:nowrap; cursor:pointer">${p.emoji} ${p.sub}</span>
+      </td>
+      <td style="padding:12px;color:var(--text)">${p.authorName}</td>
+      <td style="padding:12px;font-weight:600;color:#ff4500">▲ ${p.votes}</td>
+      <td style="padding:12px;color:var(--muted)">💬 ${p.comments}</td>
+      <td style="padding:12px">
+        <div class="table-actions" style="display:flex;gap:6px">
+          <button class="tbl-btn primary" onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; editPost(${p.id})" title="Редагувати пост">✏️</button>
+          <button class="tbl-btn danger" onclick="confirmDeletePost(${p.id})" title="Видалити пост">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
 async function initApp() {
   await loadData();
   renderHeader();
   
-  // Перевіряємо, чи є в посиланні вказівка на конкретне вікно
+  window.categoryConfig = categoryConfig;
+  window.posts = posts;
+
+  const path = window.location.pathname.toLowerCase();
+
+  // Якщо користувач просто відкрив admin.html без хешу, примусово вмикаємо дашборд
+  if (path.includes("admin.html") && !window.location.hash) {
+      window.location.hash = "#admin-dashboard";
+  }
+
   if (window.location.hash) {
     await handleRoute();
   } else {
-    // Якщо хешу немає — примусово запускаємо "головну", 
-    // яка тепер сама зробить mainLayout видимим
-    setPage("home"); 
+    if (path.includes("popular")) {
+      const sortedPosts = [...posts].sort((a, b) => b.votes - a.votes);
+      renderFeed(sortedPosts);
+    } else if (path.includes("categor") || path.includes("contact") || path.includes("admin")) {
+      // На цих сторінках скрипт нічого не приховує
+    } else {
+      setPage("home");
+    }
   }
 }
 
@@ -1506,3 +1534,4 @@ window.saveCat = saveCat;
 window.toggleJoinCategory = toggleJoinCategory;
 window.submitContactForm = submitContactForm;
 window.deleteMessage = deleteMessage;
+window.changeMessageStatus = changeMessageStatus;
