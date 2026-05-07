@@ -1399,7 +1399,7 @@ textarea {
 /* ══════ ПРАВИЛЬНИЙ ЛЕЯУТ ТА САЙДБАР ══════ */
 .layout {
   display: grid;
-  grid-template-columns: var(--sidebar) 1fr 312px; /* 260px | Контент | 312px */
+  grid-template-columns: var(--sidebar) 1fr 312px; /* 3 чіткі колонки */
   gap: 0;
   margin-top: var(--header);
   min-height: calc(100vh - var(--header));

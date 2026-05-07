@@ -73,7 +73,7 @@
     <div class="nav-section">
       <a class="nav-item" href="index.html" id="nav-home"><span class="nav-icon">🏠</span>Головна</a>
       <a class="nav-item" href="popular.html" id="nav-popular"><span class="nav-icon">🔥</span>Популярне</a>
-      <a class="nav-item" href="categories.html" id="nav-cats"><span class="nav-icon">🗂️</span>Категорії</a>
+      <a class="nav-item active" href="categories.html" id="nav-cats"><span class="nav-icon">🗂️</span>Категорії</a>
       <a class="nav-item" href="contact.html" id="nav-contact"><span class="nav-icon">✉️</span>Зворотний зв'язок</a>
     </div>
     
@@ -97,6 +97,24 @@
     </div>
   </div>
 </aside>
+
+      <!-- MAIN -->
+   <main>
+  <div id="page-home" class="page active">
+    <div style="margin-bottom: 20px">
+      <h1 style="font-family: var(--font-head); font-size: 1.5rem; font-weight: 700; margin-bottom: 6px;">🗂️ Усі категорії</h1>
+      <p style="color: var(--muted); font-size: 14px;">Оберіть спільноту, яка вам до вподоби</p>
+    </div>
+    <div id="categoryBrowseGrid" class="cat-browse-grid"></div>
+    <div id="categoryPostsSection" style="display:none">
+       <button class="btn btn-ghost" onclick="showAllCategories()" style="margin-bottom:15px">← Назад до всіх категорій</button>
+       <div id="postFeed"></div>
+    </div>
+  </div>
+
+  <div id="page-post" class="page"><div id="postViewContent"></div></div>
+  <div id="page-profile" class="page"><div id="profileContent"></div></div>
+</main>
 
       <!-- RIGHT SIDEBAR -->
       <aside class="sidebar-right">
@@ -193,34 +211,41 @@
     <script>
       document.querySelectorAll('#currentYear,.footer-year').forEach(el=>el.textContent=new Date().getFullYear());
 
-      // Render category cards once categoryConfig is available
-      function renderCategoryBrowse() {
-        if (typeof categoryConfig === 'undefined' || !Object.keys(categoryConfig).length) {
-          setTimeout(renderCategoryBrowse, 200);
-          return;
-        }
-        const grid = document.getElementById('categoryBrowseGrid');
-        if (!grid) return;
-        const entries = Object.entries(categoryConfig);
-        grid.innerHTML = entries.map(([key, v]) => {
-          const count = (typeof posts !== 'undefined') ? posts.filter(p => p.sub === key).length : 0;
-          return `<a class="cat-browse-card" href="index.html" onclick="event.preventDefault();filterByCategory('${key}');window.location.href='index.html?cat=${encodeURIComponent(key)}'">
-            <div class="cat-browse-top" style="background:${v.color}20">${v.emoji}</div>
-            <div class="cat-browse-body">
-              <div class="cat-browse-name">${key}</div>
-              <div class="cat-browse-desc">${v.desc || 'Спільнота форуму'}</div>
-              <div class="cat-browse-count">📝 ${count} постів</div>
-            </div>
-          </a>`;
-        }).join('');
-      }
+  function renderCategoryBrowse() {
+    // Чекаємо, поки app.js підтягне конфіг із бази
+    if (typeof categoryConfig === 'undefined' || !Object.keys(categoryConfig).length) {
+      setTimeout(renderCategoryBrowse, 200);
+      return;
+    }
+    
+    // 🏠 ФІКС САЙДБАРУ: Коли дані готові, просимо app.js намалювати спільноти
+    if (typeof renderSidebarCommunities === 'function') {
+      renderSidebarCommunities();
+    }
 
-      function showAllCategories() {
-        document.getElementById('categoryBrowseGrid').style.display = 'grid';
-        document.getElementById('categoryPostsSection').style.display = 'none';
-      }
+    const grid = document.getElementById('categoryBrowseGrid');
+    if (!grid) return;
+    const entries = Object.entries(categoryConfig);
+    grid.innerHTML = entries.map(([key, v]) => {
+      const count = (typeof posts !== 'undefined') ? posts.filter(p => p.sub === key).length : 0;
+      const url = 'index.html?cat=' + encodeURIComponent(key);
+      return `<a class="cat-browse-card" href="${url}">
+        <div class="cat-browse-top" style="background:${v.color}20">${v.emoji}</div>
+        <div class="cat-browse-body">
+          <div class="cat-browse-name">${key}</div>
+          <div class="cat-browse-desc">${v.desc || 'Спільнота форуму'}</div>
+          <div class="cat-browse-count">📝 ${count} постів</div>
+        </div>
+      </a>`;
+    }).join('');
+  }
 
-      document.addEventListener('DOMContentLoaded', () => setTimeout(renderCategoryBrowse, 300));
-    </script>
+  function showAllCategories() {
+    document.getElementById('categoryBrowseGrid').style.display = 'grid';
+    document.getElementById('categoryPostsSection').style.display = 'none';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => setTimeout(renderCategoryBrowse, 300));
+</script>
   </body>
 </html>

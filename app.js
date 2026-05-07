@@ -1773,3 +1773,4 @@ window.setAdminMessagesPage = setAdminMessagesPage;
 window.openUserProfile = openUserProfile;
 window.categoryConfig = categoryConfig;
 window.posts = posts;
+window.renderSidebarCommunities = renderSidebarCommunities;
