@@ -17,6 +17,8 @@ import {
   deleteContactDb,
   updateContactStatusDb,
   uploadPostImage,
+  fetchSavedPostsIds, 
+  toggleSavePostDb
 } from "./db.js";
 
 // ════════════════════════════════════════════
@@ -30,6 +32,7 @@ let currentPostId = null;
 let currentCategory = null;
 let _pendingDeleteId = null;
 let _pendingDeleteCatKey = null;
+let adminUsersCache = [];
 
 // ════════════════════════════════════════════
 //  КОРИСТУВАЧІ ТА АВТОРИЗАЦІЯ (Локально)
@@ -101,6 +104,9 @@ async function loadData() {
 // ════════════════════════════════════════════
 //  ПОСТИ (CREATE / EDIT / DELETE)
 // ════════════════════════════════════════════
+// ════════════════════════════════════════════
+//  ПОСТИ (CREATE / EDIT / DELETE)
+// ════════════════════════════════════════════
 async function submitPost() {
   const title = document.getElementById("postTitle").value.trim();
   const body = document.getElementById("postBody").value.trim();
@@ -116,7 +122,7 @@ async function submitPost() {
     return;
   }
 
-  // Handle optional image upload
+  // Завантаження зображення
   let imageUrl = null;
   const imageInput = document.getElementById("postImage");
   if (imageInput && imageInput.files && imageInput.files[0]) {
@@ -148,14 +154,13 @@ async function submitPost() {
   user.contributions = (user.contributions || 0) + 1;
   updateStoredUser(user);
 
- await loadData();
+  await loadData();
+  
+  // Очищаємо форму
   document.getElementById("postTitle").value = "";
   document.getElementById("postBody").value = "";
+  if (imageInput) imageInput.value = "";
   
-  const imgInput = document.getElementById("postImage");
-  if (imgInput) imgInput.value = "";
-  
-  // Очищення саме того ID, який ми бачимо в HTML
   const imgPreview = document.getElementById("imagePreview");
   if (imgPreview) {
     imgPreview.style.display = "none";
@@ -164,7 +169,20 @@ async function submitPost() {
   
   closeModal("createPostOverlay");
   renderHeader();
-  renderFeed();
+
+  // 🛑 РОЗУМНЕ ОНОВЛЕННЯ СТРІЧКИ (ОСЬ НАШЕ ВИПРАВЛЕННЯ!)
+  if (currentCategory) {
+    // Якщо ми в категорії, малюємо ТІЛЬКИ її пости
+    renderFeed(posts.filter(p => p.sub === currentCategory));
+  } else if (window.location.pathname.toLowerCase().includes("popular.html")) {
+    // Якщо в популярному — зберігаємо сортування
+    const sortedPosts = [...posts].sort((a, b) => b.votes - a.votes);
+    renderFeed(sortedPosts);
+  } else {
+    // Звичайна головна стрічка
+    renderFeed();
+  }
+
   showToast("✅ Пост опубліковано! +5 карми", "success");
 }
 
@@ -413,6 +431,11 @@ function postCard(p) {
     ? `<button class="action-btn" style="color:var(--blue)" onclick="event.stopPropagation();editPost(${p.id})">✏️ Редагувати</button><button class="action-btn" style="color:#ff7043" onclick="event.stopPropagation();confirmDeletePost(${p.id})">🗑️ Видалити</button>`
     : "";
 
+  // 🛑 ПЕРЕВІРЯЄМО СТАТУС ЗБЕРЕЖЕННЯ
+  const isSaved = user?.savedPosts?.includes(p.id);
+  const saveBtnText = isSaved ? "🔖 Збережено" : "🔖 Зберегти";
+  const saveBtnStyle = isSaved ? "color: var(--green);" : "";
+
   return `<div class="post-card" onclick="openPost(${p.id})">
     <div class="post-vote" onclick="event.stopPropagation()">
       <button class="vote-btn${v === 1 ? " voted" : ""}" onclick="castVote(${p.id},1)">▲</button>
@@ -436,17 +459,13 @@ function postCard(p) {
       <div class="post-actions">
         <button class="action-btn">💬 ${fmtNum(commentCount)}</button>
         <button class="action-btn" onclick="event.stopPropagation();sharePost(${p.id})">🔗 Поділитись</button>
+        <button class="action-btn" style="${saveBtnStyle}" onclick="event.stopPropagation();savePost(${p.id}, this)">${saveBtnText}</button>
         ${manageBtns}
       </div>
     </div>
     <div class="post-thumb">${p.emoji}</div>
   </div>`;
 }
-
-
-  
-  // ... далі залишається твій старий код (const comments = await fetchCommentsDb(id); і т.д.)
-
 function renderComment(c) {
   const time = c.created_at
     ? new Date(c.created_at).toLocaleString("uk-UA", {
@@ -510,6 +529,9 @@ async function doSignin() {
 
   err.classList.remove("show");
   setCurrentUser(result.user);
+  const savedIds = await fetchSavedPostsIds(result.user.id);
+result.user.savedPosts = savedIds;
+setCurrentUser(result.user);
   closeModal("loginOverlay");
 
   renderHeader();
@@ -557,6 +579,9 @@ async function doSignup() {
 
   err.classList.remove("show");
   setCurrentUser(result.user);
+  const savedIds = await fetchSavedPostsIds(result.user.id);
+result.user.savedPosts = savedIds;
+setCurrentUser(result.user);
   closeModal("registerOverlay");
 
   renderHeader();
@@ -630,9 +655,38 @@ function castVote(id, dir) {
   voteMap[id] = voteMap[id] === dir ? 0 : dir;
   renderFeed();
 }
-function savePost(id) {
+async function savePost(id, btn) {
   if (!requireAuth()) return;
-  showToast("🔖 Збережено!", "success");
+  const user = getCurrentUser();
+  
+  const result = await toggleSavePostDb(user.id, id);
+  
+  if (!user.savedPosts) user.savedPosts = [];
+  
+  if (result.action === 'added') {
+    user.savedPosts.push(id);
+    showToast("🔖 Збережено!", "success");
+    // 🎨 Миттєво фарбуємо кнопку в синій колір
+    if (btn) {
+      btn.innerHTML = "🔖 Збережено";
+      btn.style.color = "var(--green)";
+    }
+  } else {
+    user.savedPosts = user.savedPosts.filter(postId => postId !== id);
+    showToast("🔖 Видалено зі збереженого", "info");
+    // 🎨 Повертаємо кнопці стандартний вигляд
+    if (btn) {
+      btn.innerHTML = "🔖 Зберегти";
+      btn.style.color = "";
+    }
+  }
+
+  updateStoredUser(user);
+  
+  // Якщо ми в профілі на вкладці збереженого — перемальовуємо список
+  if (document.getElementById("page-profile")?.classList.contains("active") && profileTab === "saved") {
+    renderProfile("saved");
+  }
 }
 
 // ════════════════════════════════════════════
@@ -891,25 +945,45 @@ window.previewImage = previewImage;
 // ════════════════════════════════════════════
 //  НАВІГАЦІЯ ТА РОУТИНГ (ІДЕАЛЬНИЙ БЛОК)
 // ════════════════════════════════════════════
-async function openPost(id) {
+async function openPost(rawId) {
   // 🛡️ МАГІЧНИЙ ЩИТ
   const pv = document.getElementById("postViewContent");
   if (!pv) {
-    window.location.href = "index.html#post-" + id;
+    window.location.href = "index.html#post-" + rawId;
     return;
   }
 
-  window.location.hash = "post-" + id;
-  currentPostId = id;
+  // Суворо перетворюємо на число (Number видасть помилку NaN, якщо там є літери)
+  const id = Number(rawId);
   const p = posts.find((x) => x.id === id);
-  if (!p) return;
 
-  const comments = await fetchCommentsDb(id);
-  const v = voteMap[id] || 0;
+  // 🛑 ЯКЩО ПОСТ НЕ ЗНАЙДЕНО
+  if (!p) {
+    pv.innerHTML = `
+      <div style="margin-bottom:12px"><button class="action-btn" onclick="setPage('home')">← Назад</button></div>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:60px 20px; text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;"></div>
+        <h2 style="font-family:var(--font-head); font-size:1.5rem; margin-bottom:8px;">Пост не знайдено</h2>
+        <p style="color:var(--muted); font-size:14px; margin-bottom:24px;">Схоже, цей пост був видалений, або посилання пошкоджене.</p>
+        <button class="btn btn-accent" style="border-radius:8px; padding:8px 24px;" onclick="setPage('home')">Повернутись у стрічку</button>
+      </div>`;
+    setPage("post");
+    return; // Зупиняємось ТУТ, не "виправляючи" адресний рядок!
+  }
+
+  // ✅ ТІЛЬКИ ЯКЩО ПОСТ ЗНАЙДЕНО — фіксуємо правильний URL
+  window.location.hash = "post-" + p.id;
+  currentPostId = p.id;
+
+  const comments = await fetchCommentsDb(p.id);
+  const v = voteMap[p.id] || 0;
   const auth = isAuthenticated();
   const user = getCurrentUser();
   const authorName = getAuthorName(p);
   const canManage = user && (user.id === p.authorId || isAdmin());
+  const isSaved = user?.savedPosts?.includes(p.id);
+  const saveBtnText = isSaved ? "🔖 Збережено" : "🔖 Зберегти";
+  const saveBtnStyle = isSaved ? "color: var(--green);" : "";
 
   pv.innerHTML = `
     <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
@@ -1001,10 +1075,16 @@ function setPage(name) {
 // ════════════════════════════════════════════
 //  ПРОФІЛЬ КОРИСТУВАЧА
 // ════════════════════════════════════════════
-let profileTab = "overview"; // 🏆 ОСЬ ВОНА, НАША ЗГУБЛЕНА ЗМІННА!
+let profileTab = "overview"; 
+let currentViewedUser = null;
+function openUserProfile(userId) {
+  // Просто надійно перекидаємо на Головну сторінку з правильним хешем
+  window.location.href = "index.html#profile-" + userId;
+}
 
 function goProfile() {
   if (!requireAuth()) return;
+  currentViewedUser = null; // Скидаємо, щоб показати СВІЙ профіль
   const pc = document.getElementById("profileContent");
   if (!pc) {
     window.location.href = "index.html#profile";
@@ -1017,57 +1097,63 @@ function goProfile() {
 
 async function renderProfile(tab) {
   if (tab) profileTab = tab;
-  const user = getCurrentUser();
+  
+  const user = currentViewedUser || getCurrentUser();
   if (!user) return;
 
   const ini = user.name.slice(0, 2).toUpperCase();
   const uColor = getUserColor(user.name);
   const handle = "u/" + user.name.toLowerCase().replace(/\s+/g, "_");
+  const isMe = !currentViewedUser || currentViewedUser.id === getCurrentUser()?.id;
+
+  // 1. Списки вкладок (Додаємо "Збережене" ТІЛЬКИ власнику)
   const tabs = [
     { id: "overview", label: "Огляд" },
     { id: "posts", label: "Пости" },
     { id: "comments", label: "Коментарі" },
   ];
+  if (isMe) {
+    tabs.push({ id: "saved", label: "Збережене" });
+  }
 
-  // 1. Фільтруємо пости користувача
   const userPosts = posts.filter(p => p.authorId === user.id);
-  
-  // 2. Завантажуємо коментарі
   const userComments = await fetchUserCommentsDb(user.id);
 
-  // 3. Формуємо контент вкладки
+  // 2. Формуємо контент вкладки
   let tabContent = "";
   if (profileTab === "posts") {
     tabContent = userPosts.length > 0 
       ? userPosts.map(p => postCard(p)).join("") 
-      : `<div class="profile-empty"><h3>Постів ще немає</h3><p>Ви ще не опублікували жодного поста.</p></div>`;
+      : `<div class="profile-empty"><h3>Постів ще немає</h3><p>${isMe ? 'Ви ще не опублікували' : 'Користувач ще не опублікував'} жодного поста.</p></div>`;
       
   } else if (profileTab === "comments") {
     tabContent = userComments.length > 0 
       ? `<div style="padding:8px 16px">${userComments.map(c => {
           const p = posts.find(post => post.id === c.post_id);
           const postHeader = p 
-            ? `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">
-                 До поста: <a style="color:var(--blue); cursor:pointer; font-weight:600; text-decoration:underline" onclick="openPost(${p.id})">${p.title}</a>
-               </div>` 
-            : `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">Пост видалено або недоступний</div>`;
-
-          return `
-            <div style="border-bottom:1px solid var(--border); padding:16px 0; animation: fadeIn 0.3s ease both">
-              ${postHeader}
-              ${renderComment(c)}
-            </div>`;
+            ? `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">До поста: <a style="color:var(--blue); cursor:pointer; font-weight:600; text-decoration:underline" onclick="openPost(${p.id})">${p.title}</a></div>` 
+            : `<div style="font-size:11px; color:var(--muted); margin-bottom:8px; padding-left:38px">Пост видалено</div>`;
+          return `<div style="border-bottom:1px solid var(--border); padding:16px 0; animation: fadeIn 0.3s ease both">${postHeader}${renderComment(c)}</div>`;
         }).join("")}</div>` 
-      : `<div class="profile-empty"><h3>Коментарів ще немає</h3><p>Ви ще не залишили жодного коментаря.</p></div>`;
+      : `<div class="profile-empty"><h3>Коментарів ще немає</h3><p>${isMe ? 'Ви ще не залишили' : 'Користувач ще не залишив'} жодного коментаря.</p></div>`;
       
+  } else if (profileTab === "saved" && isMe) {
+    // 🔒 НОВА ЛОГІКА ЗБЕРЕЖЕНОГО
+    const savedIds = user.savedPosts || [];
+    const savedPosts = posts.filter(p => savedIds.includes(p.id));
+    
+    tabContent = savedPosts.length > 0 
+      ? savedPosts.map(p => postCard(p)).join("") 
+      : `<div class="profile-empty"><h3>Збереженого немає</h3><p>Тут з'являться пости, які ви відмітили закладкою.</p></div>`;
+
   } else {
     // Вкладка "Огляд"
     tabContent = userPosts.length > 0 
       ? `<div style="padding:10px 0; border-bottom:1px solid var(--border); margin-bottom:10px; font-weight:700; padding-left:16px">Останні пости</div>` + userPosts.slice(0, 3).map(p => postCard(p)).join("")
-      : `<div class="profile-empty"><h3>Активності немає</h3><p>Тут з'являться ваші останні дії.</p></div>`;
+      : `<div class="profile-empty"><h3>Активності немає</h3><p>Тут з'являться останні дії.</p></div>`;
   }
 
-  // 4. Рендеримо профіль
+  // 3. Рендеримо профіль
   document.getElementById("profileContent").innerHTML = `
     <div class="profile-header-card">
       <div class="profile-banner"></div>
@@ -1076,21 +1162,19 @@ async function renderProfile(tab) {
       </div>
       <div class="profile-info-row">
         <div>
-          <div class="profile-name">${user.name}${isAdmin() ? '<span class="admin-badge">АДМІН</span>' : ""}</div>
+          <div class="profile-name">${user.name}${user.role === "superadmin" ? '<span class="admin-badge" style="background:#c0392b">СУПЕР АДМІН</span>' : user.is_admin ? '<span class="admin-badge">АДМІН</span>' : ""}</div>
           <div class="profile-handle">${handle}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost" style="border-radius:8px" onclick="shareProfile()">🔗 Поділитись</button>
-          ${isAdmin() ? `<button class="btn btn-admin" style="border-radius:8px" onclick="openAdminPanel()">⚙️ Адмін панель</button>` : ""}
+          ${isAdmin() && isMe ? `<button class="btn btn-admin" style="border-radius:8px" onclick="openAdminPanel()">⚙️ Адмін панель</button>` : ""}
         </div>
       </div>
     </div>
     
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden">
       <div class="profile-tabs">${tabs.map((t) => `<div class="profile-tab${profileTab === t.id ? " active" : ""}" onclick="renderProfile('${t.id}')">${t.label}</div>`).join("")}</div>
-      <div id="profileTabBody">
-        ${tabContent}
-      </div>
+      <div id="profileTabBody">${tabContent}</div>
     </div>
 
     <div class="profile-layout">
@@ -1102,7 +1186,7 @@ async function renderProfile(tab) {
             <div class="profile-stat-row"><span class="profile-stat-label">Карма</span><span style="font-weight:700">⭐ ${user.karma || 0}</span></div>
             <div class="profile-stat-row"><span class="profile-stat-label">Внески</span><span style="font-weight:700">${user.contributions || 0}</span></div>
             <div class="profile-stat-row"><span class="profile-stat-label">Зареєстрований</span><span style="font-weight:700">з ${user.created_at ? new Date(user.created_at).toLocaleDateString("uk-UA") : new Date().getFullYear()}</span></div>
-            <div class="profile-stat-row"><span class="profile-stat-label">Роль</span><span style="font-weight:700;color:${isAdmin() ? "var(--yellow)" : "var(--green)"}">${isAdmin() ? "Адмін" : "Користувач"}</span></div>
+            <div class="profile-stat-row"><span class="profile-stat-label">Роль</span><span style="font-weight:700;color:${user.role === "superadmin" ? "var(--red)" : user.is_admin ? "var(--yellow)" : "var(--green)"}">${user.role === "superadmin" ? "Супер Адмін" : user.is_admin ? "Адмін" : "Користувач"}</span></div>
           </div>
         </div>
       </div>
@@ -1121,40 +1205,113 @@ async function handleRoute() {
   const hash = window.location.hash;
   const path = window.location.pathname.toLowerCase();
   
-  if (hash.startsWith("#post-")) {
-    const id = parseInt(hash.replace("#post-", ""));
-    if (id) await openPost(id);
-  } else if (hash === "#profile") {
-    goProfile();
+ if (hash.startsWith("#post-")) {
+    // 🛡️ Передаємо хеш як є, без parseInt, щоб не губити літери!
+    const rawId = hash.replace("#post-", "");
+    await openPost(rawId);
+    
+ } else if (hash.startsWith("#profile")) {
+    if (hash === "#profile") {
+      currentViewedUser = null;
+      goProfile();
+    } else {
+      const userId = parseInt(hash.replace("#profile-", ""));
+      
+      // 🛑 МАГІЧНИЙ ФІКС: Якщо ми перейшли з іншої сторінки і список юзерів порожній,
+      // ми швидко просимо базу даних дати нам цей список!
+      if (adminUsersCache.length === 0) {
+        adminUsersCache = await fetchUsers();
+      }
+
+      const u = adminUsersCache.find(x => x.id === userId);
+      if (u) {
+        currentViewedUser = u;
+        const pc = document.getElementById("profileContent");
+        if (!pc) { window.location.href = "index.html" + hash; return; }
+        renderProfile("overview");
+        setPage("profile");
+      } else {
+         const pc = document.getElementById("profileContent");
+         if (!pc) { window.location.href = "index.html" + hash; return; }
+         pc.innerHTML = `
+           <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:60px 20px; text-align:center; margin-top:20px;">
+             <div style="font-size:48px; margin-bottom:16px;">👤</div>
+             <h2 style="font-family:var(--font-head); font-size:1.5rem; margin-bottom:8px;">Профіль не знайдено</h2>
+             <p style="color:var(--muted); font-size:14px; margin-bottom:24px;">Такого користувача не існує або він прихований.</p>
+             <button class="btn btn-accent" style="border-radius:8px; padding:8px 24px;" onclick="setPage('home')">На головну</button>
+           </div>`;
+         setPage("profile");
+      }
+    }
   } else if (hash.startsWith("#category-")) {
     const cat = decodeURIComponent(hash.replace("#category-", ""));
-    filterByCategory(cat);
+    // Якщо такої категорії не існує
+    if (!categoryConfig[cat]) {
+      const pf = document.getElementById("postFeed");
+      if (!pf) { window.location.href = "index.html" + hash; return; }
+      pf.innerHTML = `
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:60px 20px; text-align:center; margin-top:20px;">
+          <div style="font-size:48px; margin-bottom:16px;">🗂️</div>
+          <h2 style="font-family:var(--font-head); font-size:1.5rem; margin-bottom:8px;">Категорію не знайдено</h2>
+          <p style="color:var(--muted); font-size:14px; margin-bottom:24px;">Спільноти <b>${cat}</b> не існує.</p>
+          <button class="btn btn-accent" style="border-radius:8px; padding:8px 24px;" onclick="setPage('home')">Повернутись у стрічку</button>
+        </div>`;
+      setPage("home");
+    } else {
+      filterByCategory(cat);
+    }
+
   } else if (hash.startsWith("#admin")) { 
     const tab = hash.replace("#admin-", "") || "dashboard";
     if (isAdmin()) {
-      // 🛡️ Якщо ми НЕ на admin.html, йдемо туди!
       if (!path.includes("admin.html")) {
         window.location.href = "admin.html" + hash;
         return;
       }
-      
-      // Якщо ми вже на admin.html — спокійно малюємо таблиці
       const adminPanel = document.getElementById("adminPanel");
       if (adminPanel) {
         adminPanel.style.display = "block";
         switchAdminTab(tab);
       }
     } else {
-      window.location.href = "index.html"; // Не адмін? Кидаємо на головну
+      window.location.href = "index.html";
     }
   } else {
-    // Захист від пустих сторінок
     if (!path.includes("popular") && !path.includes("categor") && !path.includes("contact") && !path.includes("admin")) {
       setPage("home");
     }
   }
 }
 
+// ════════════════════════════════════════════
+//  НАЛАШТУВАННЯ ПАГІНАЦІЇ (ЛОГІКА)
+// ════════════════════════════════════════════
+const ITEMS_PER_PAGE = 15;
+
+let adminPostsPage = 1;
+
+let adminMessagesPage = 1;
+let adminMessagesCache = [];
+
+let adminUsersPage = 1;
+let filteredUsersCache = []; // Кеш для пошуку користувачів
+
+// Генератор HTML для кнопок сторінок
+function getPaginationHTML(totalItems, currentPage, funcName) {
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  if (totalPages <= 1) return ""; 
+  
+  let html = `<div style="display:flex; gap:6px; justify-content:center; margin-top:16px; padding:10px;">`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="btn ${i === currentPage ? 'btn-accent' : 'btn-ghost'}" style="padding:6px 14px; border-radius:8px; font-weight:bold;" onclick="${funcName}(${i})">${i}</button>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+// ════════════════════════════════════════════
+//  ГОЛОВНИЙ ПЕРЕМИКАЧ АДМІНКИ
+// ════════════════════════════════════════════
 function switchAdminTab(tab) {
   window.location.hash = "admin-" + tab;
   document.querySelectorAll(".admin-page").forEach((p) => p.classList.remove("active"));
@@ -1167,9 +1324,9 @@ function switchAdminTab(tab) {
   
   if (tab === "dashboard") renderAdminDashboard();
   else if (tab === "categories") renderAdminCategories();
-  else if (tab === "users") renderAdminUsers();
-  else if (tab === "posts") renderAdminPosts();
-  else if (tab === "messages") renderAdminMessages();
+  else if (tab === "users") { adminUsersPage = 1; renderAdminUsers(); }
+  else if (tab === "posts") { adminPostsPage = 1; renderAdminPosts(); }
+  else if (tab === "messages") { adminMessagesPage = 1; loadAdminMessages(); }
 }
 
 function renderAdminDashboard() {
@@ -1210,9 +1367,7 @@ function showCatForm() {
   document.getElementById("catColor").value = "";
 }
 
-function hideCatForm() {
-  document.getElementById("catFormWrap").style.display = "none";
-}
+function hideCatForm() { document.getElementById("catFormWrap").style.display = "none"; }
 
 function startEditCat(key) {
   const v = categoryConfig[key];
@@ -1238,24 +1393,15 @@ async function saveCat() {
   const flairClass = document.getElementById("catFlair")?.value || "flair-tech";
   const flairLabel = flairClass === "flair-cs" ? "Пост" : flairClass === "flair-news" ? "Новини" : "Тема";
 
-  if (!name || !name.startsWith("r/")) {
-    showToast("Назва має починатись з r/ та не бути порожньою!", "error");
-    return;
-  }
+  if (!name || !name.startsWith("r/")) { showToast("Назва має починатись з r/ та не бути порожньою!", "error"); return; }
 
   if (editKey && editKey !== name) {
     const hasPosts = posts.some((p) => p.sub === editKey);
-    if (hasPosts) {
-      showToast("Не можна змінити назву, є пости!", "error");
-      return;
-    }
+    if (hasPosts) { showToast("Не можна змінити назву, є пости!", "error"); return; }
     await supabase.from("categories").delete().eq("name", editKey);
   }
 
-  const { error } = await supabase.from("categories").upsert([{
-    name: name, emoji: emoji, color: color, description: desc, flair_label: flairLabel, flair_class: flairClass
-  }]);
-
+  const { error } = await supabase.from("categories").upsert([{ name: name, emoji: emoji, color: color, description: desc, flair_label: flairLabel, flair_class: flairClass }]);
   if (error) { showToast("Помилка збереження в базу!", "error"); return; }
 
   hideCatForm();
@@ -1310,27 +1456,40 @@ async function submitContactForm() {
     document.getElementById("contactName").value = "";
     document.getElementById("contactEmail").value = "";
     document.getElementById("contactMessage").value = "";
-  } else {
-    showToast("Помилка при надсиланні", "error");
-  }
+  } else { showToast("Помилка при надсиланні", "error"); }
 }
 
-async function renderAdminMessages() {
-  const msgs = await fetchContactsDb();
-  const countEl = document.getElementById("messagesCount");
-  if (countEl) countEl.textContent = `Всього: ${msgs.length} звернень`;
+// ════════════════════════════════════════════
+//  АДМІН: ЗВЕРНЕННЯ (ПАКЕТНЕ ЗАВАНТАЖЕННЯ)
+// ════════════════════════════════════════════
+async function loadAdminMessages() {
+  adminMessagesCache = await fetchContactsDb();
+  drawMessagesTable();
+}
 
-  // 🎨 Наші оновлені кольори (Зелений для закритого!)
+function setAdminMessagesPage(page) {
+  adminMessagesPage = page;
+  drawMessagesTable();
+}
+
+function drawMessagesTable() {
+  const countEl = document.getElementById("messagesCount");
+  if (countEl) countEl.textContent = `Всього: ${adminMessagesCache.length} звернень`;
+
   const statusColors = {
     'new': { label: 'Нове', color: 'var(--blue)' },
     'process': { label: 'В роботі', color: 'var(--yellow)' },
-    'closed': { label: 'Закрито', color: 'var(--green)' } 
+    'closed': { label: 'Закрито', color: 'var(--green)' }
   };
 
   const tb = document.getElementById("messagesTableBody");
   if(!tb) return;
-  
-  tb.innerHTML = msgs.map(m => {
+
+  // ✂️ ПАГІНАЦІЯ
+  const start = (adminMessagesPage - 1) * ITEMS_PER_PAGE;
+  const paginated = adminMessagesCache.slice(start, start + ITEMS_PER_PAGE);
+
+  tb.innerHTML = paginated.map(m => {
     const date = m.created_at ? new Date(m.created_at).toLocaleString('uk-UA') : "—";
     const currentStatus = m.status || 'new';
     const s = statusColors[currentStatus];
@@ -1342,11 +1501,7 @@ async function renderAdminMessages() {
         <td style="padding:12px;color:var(--blue)">${m.email}</td>
         <td style="padding:12px;max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${m.message.replace(/"/g, '&quot;')}">${m.message}</td>
         <td style="padding:12px">
-          <!-- 🔽 Повертаємо список зі стрілочкою, але з динамічним кольором -->
-          <select 
-            onchange="changeMessageStatus(${m.id}, this.value)" 
-            style="background:${s.color}20; color:${s.color}; border:1px solid ${s.color}40; border-radius:12px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; outline:none;"
-          >
+          <select onchange="changeMessageStatus(${m.id}, this.value)" style="background:${s.color}20; color:${s.color}; border:1px solid ${s.color}40; border-radius:12px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer; outline:none">
             <option value="new" style="color:var(--text); background:var(--bg);" ${currentStatus === 'new' ? 'selected' : ''}>Нове</option>
             <option value="process" style="color:var(--text); background:var(--bg);" ${currentStatus === 'process' ? 'selected' : ''}>В роботі</option>
             <option value="closed" style="color:var(--text); background:var(--bg);" ${currentStatus === 'closed' ? 'selected' : ''}>Закрито</option>
@@ -1356,50 +1511,88 @@ async function renderAdminMessages() {
       </tr>
     `;
   }).join("");
-}
-// Функція збереження статусу з випадаючого списку
-async function changeMessageStatus(id, newStatus) {
-  // Відправляємо в БД (функція updateContactStatusDb підключена зверху файлу)
-  const result = await updateContactStatusDb(id, newStatus);
-  
-  if (result && result.success) {
-    renderAdminMessages(); // Перемальовуємо, щоб весь Select змінив свій колір
-    showToast("✅ Статус оновлено!", "success");
-  } else {
-    showToast("Помилка зміни статусу", "error");
+
+  // 🔘 Рендер кнопок пагінації
+  let pagContainer = document.getElementById("adminMessagesPagination");
+  if (!pagContainer) {
+    pagContainer = document.createElement("div");
+    pagContainer.id = "adminMessagesPagination";
+    tb.closest('.admin-table-wrap').after(pagContainer);
   }
+  pagContainer.innerHTML = getPaginationHTML(adminMessagesCache.length, adminMessagesPage, 'setAdminMessagesPage');
 }
+
+async function changeMessageStatus(id, newStatus) {
+  const result = await updateContactStatusDb(id, newStatus);
+  if (result && result.success) {
+    await loadAdminMessages();
+    showToast("✅ Статус оновлено!", "success");
+  } else { showToast("Помилка зміни статусу", "error"); }
+}
+
 async function deleteMessage(id) {
   if (confirm("Видалити це звернення?")) {
     const result = await deleteContactDb(id);
     if (result.success) {
-      renderAdminMessages();
+      await loadAdminMessages();
       showToast("🗑️ Звернення видалено", "success");
-    } else {
-      showToast("Помилка видалення", "error");
-    }
+    } else { showToast("Помилка видалення", "error"); }
   }
 }
 
+// ════════════════════════════════════════════
+//  АДМІН: КОРИСТУВАЧІ ТА ПОШУК
+// ════════════════════════════════════════════
 async function renderAdminUsers() {
-  const usersFromDb = await fetchUsers();
-  const currentU = getCurrentUser();
+  adminUsersCache = await fetchUsers();
+  filteredUsersCache = [...adminUsersCache];
+  drawUsersTable();
+}
 
+function filterAdminUsers(query) {
+  const q = query.toLowerCase().trim();
+  filteredUsersCache = adminUsersCache.filter(u => 
+    u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+  );
+  adminUsersPage = 1; // Скидаємо на 1 сторінку при пошуку
+  drawUsersTable();
+}
+
+function setAdminUsersPage(page) {
+  adminUsersPage = page;
+  drawUsersTable();
+}
+
+function drawUsersTable() {
+  const currentU = getCurrentUser();
   const userCountEl = document.getElementById("userCount");
-  if (userCountEl) userCountEl.textContent = `Всього: ${usersFromDb.length} користувачів`;
+  if (userCountEl) userCountEl.textContent = `Знайдено: ${filteredUsersCache.length}`;
 
   const tb = document.getElementById("usersTableBody");
   if(!tb) return;
-  tb.innerHTML = usersFromDb.map((u) => {
+
+  if (filteredUsersCache.length === 0) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted)">Користувачів не знайдено 🕵️‍♂️</td></tr>`;
+    const pag = document.getElementById("adminUsersPagination");
+    if (pag) pag.innerHTML = "";
+    return;
+  }
+
+  const start = (adminUsersPage - 1) * ITEMS_PER_PAGE;
+  const paginated = filteredUsersCache.slice(start, start + ITEMS_PER_PAGE);
+
+  tb.innerHTML = paginated.map((u) => {
     const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString("uk-UA") : "—";
     return `
     <tr style="border-bottom:1px solid var(--border)">
       <td style="padding:12px">
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px; cursor:pointer;" onclick="openUserProfile(${u.id})" title="Перейти в профіль">
           <div class="user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;${u.role === "superadmin" ? "background:#c0392b;color:#fff" : u.is_admin ? "background:var(--yellow)" : ""}">
             ${u.name.slice(0, 2).toUpperCase()}
           </div>
-          <span>${u.name}${u.id === currentU?.id ? ' <span style="font-size:11px;color:var(--muted)">(ви)</span>' : ""}</span>
+          <span style="font-weight:600; text-decoration:underline; color:var(--text); transition:color 0.2s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'">
+            ${u.name}${u.id === currentU?.id ? ' <span style="font-size:11px;color:var(--muted);text-decoration:none">(ви)</span>' : ""}
+          </span>
         </div>
       </td>
       <td style="padding:12px;color:var(--muted)">${u.email}</td>
@@ -1417,6 +1610,14 @@ async function renderAdminUsers() {
       </td>
     </tr>`;
   }).join("");
+
+  let pagContainer = document.getElementById("adminUsersPagination");
+  if (!pagContainer) {
+    pagContainer = document.createElement("div");
+    pagContainer.id = "adminUsersPagination";
+    tb.closest('.admin-table-wrap').after(pagContainer);
+  }
+  pagContainer.innerHTML = getPaginationHTML(filteredUsersCache.length, adminUsersPage, 'setAdminUsersPage');
 }
 
 async function changeUserRole(userId, newRole) {
@@ -1433,16 +1634,29 @@ async function deleteUser(userId) {
   }
 }
 
+// ════════════════════════════════════════════
+//  АДМІН: ВСІ ПОСТИ
+// ════════════════════════════════════════════
+function setAdminPostsPage(page) {
+  adminPostsPage = page;
+  renderAdminPosts();
+}
+
 function renderAdminPosts() {
   const postsCountEl = document.getElementById("postsCount");
   if (postsCountEl) postsCountEl.textContent = `Всього: ${posts.length} постів`;
 
   const tb = document.getElementById("postsTableBody");
   if(!tb) return;
-  tb.innerHTML = posts.map((p) => `
-    <tr style="border-bottom:1px solid var(--border)">
+
+  // ✂️ ПАГІНАЦІЯ
+  const start = (adminPostsPage - 1) * ITEMS_PER_PAGE;
+  const paginated = posts.slice(start, start + ITEMS_PER_PAGE);
+
+  tb.innerHTML = paginated.map((p) => `
+   <tr style="border-bottom:1px solid var(--border)">
       <td style="padding:12px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;padding-bottom:14px" title="${p.title.replace(/"/g, "&quot;")}">
-        <b>${p.title}</b>
+        <a href="#post-${p.id}" onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display='';" style="color:var(--text); text-decoration:none; transition:color 0.2s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'"><b>${p.title}</b></a>
       </td>
       <td style="padding:12px">
         <span onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; filterByCategory('${p.sub}')" style="background:${p.subColor}20; color:${p.subColor}; padding:4px 8px; border-radius:12px; font-size:12px; white-space:nowrap; cursor:pointer">${p.emoji} ${p.sub}</span>
@@ -1458,18 +1672,34 @@ function renderAdminPosts() {
       </td>
     </tr>
   `).join("");
+
+  // 🔘 Рендер кнопок пагінації
+  let pagContainer = document.getElementById("adminPostsPagination");
+  if (!pagContainer) {
+    pagContainer = document.createElement("div");
+    pagContainer.id = "adminPostsPagination";
+    tb.closest('.admin-table-wrap').after(pagContainer);
+  }
+  pagContainer.innerHTML = getPaginationHTML(posts.length, adminPostsPage, 'setAdminPostsPage');
 }
 
 async function initApp() {
   await loadData();
   renderHeader();
   
+  // 🌍 РОБИМО ДАНІ ГЛОБАЛЬНИМИ
   window.categoryConfig = categoryConfig;
   window.posts = posts;
 
   const path = window.location.pathname.toLowerCase();
 
-  // Якщо користувач просто відкрив admin.html без хешу, примусово вмикаємо дашборд
+  // 🚀 ХОВАЄМО ЕКРАН ЗАВАНТАЖЕННЯ ПЛАВНО
+  const loader = document.getElementById("globalLoader");
+  if (loader) {
+    loader.classList.add("hidden");
+  }
+
+  // Якщо користувач просто відкрив admin.html без хешу
   if (path.includes("admin.html") && !window.location.hash) {
       window.location.hash = "#admin-dashboard";
   }
@@ -1477,11 +1707,12 @@ async function initApp() {
   if (window.location.hash) {
     await handleRoute();
   } else {
+    // 🧠 РОЗУМНИЙ РЕНДЕР
     if (path.includes("popular")) {
       const sortedPosts = [...posts].sort((a, b) => b.votes - a.votes);
       renderFeed(sortedPosts);
     } else if (path.includes("categor") || path.includes("contact") || path.includes("admin")) {
-      // На цих сторінках скрипт нічого не приховує
+      // Тут нічого не ховаємо
     } else {
       setPage("home");
     }
@@ -1535,3 +1766,10 @@ window.toggleJoinCategory = toggleJoinCategory;
 window.submitContactForm = submitContactForm;
 window.deleteMessage = deleteMessage;
 window.changeMessageStatus = changeMessageStatus;
+window.filterAdminUsers = filterAdminUsers;
+window.setAdminUsersPage = setAdminUsersPage;
+window.setAdminPostsPage = setAdminPostsPage;
+window.setAdminMessagesPage = setAdminMessagesPage;
+window.openUserProfile = openUserProfile;
+window.categoryConfig = categoryConfig;
+window.posts = posts;

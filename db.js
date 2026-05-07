@@ -176,3 +176,33 @@ export async function uploadPostImage(file) {
 
   return urlData.publicUrl;
 }
+export async function fetchSavedPostsIds(userId) {
+  const { data, error } = await supabase
+    .from('saved_posts')
+    .select('post_id')
+    .eq('user_id', userId);
+  
+  if (error) return [];
+  return data.map(item => item.post_id);
+}
+
+// Перемкнути статус збереження (додати/видалити)
+export async function toggleSavePostDb(userId, postId) {
+  // Перевіряємо, чи вже є такий запис
+  const { data } = await supabase
+    .from('saved_posts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('post_id', postId)
+    .single();
+
+  if (data) {
+    // Якщо є — видаляємо
+    await supabase.from('saved_posts').delete().eq('id', data.id);
+    return { action: 'removed' };
+  } else {
+    // Якщо немає — створюємо
+    await supabase.from('saved_posts').insert([{ user_id: userId, post_id: postId }]);
+    return { action: 'added' };
+  }
+}

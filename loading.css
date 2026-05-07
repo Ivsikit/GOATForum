@@ -1,0 +1,31 @@
+
+#globalLoader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg); /* Використовує колір фону твого сайту */
+  z-index: 99999; /* Щоб перекривало абсолютно все */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+/* Клас, який JavaScript додасть, щоб сховати екран */
+#globalLoader.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loader-icon {
+  font-size: 56px;
+  animation: bounceLoader 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes bounceLoader {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-20px) scale(1.1); }
+}

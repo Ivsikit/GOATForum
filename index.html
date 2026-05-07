@@ -11,6 +11,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="globalLoader">
+      <div class="loader-icon">🐐</div>
+      <h2 style="font-family: var(--font-head); margin-top: 16px; color: var(--text); font-size: 1.2rem;">
+        Завантаження форуму...
+      </h2>
+    </div>
 
     <!-- ═══════════ HEADER (однаковий на всіх сторінках) ═══════════ -->
     <header>
@@ -32,34 +38,35 @@
 
     <div class="layout" id="mainLayout">
       <!-- LEFT SIDEBAR -->
-      <aside class="sidebar-left">
-        <div class="nav-section">
-          <a class="nav-item active" href="index.html">
-            <span class="nav-icon">🏠</span>Головна
-          </a>
-          <a class="nav-item" href="popular.html">
-            <span class="nav-icon">🔥</span>Популярне
-          </a>
-          <a class="nav-item" href="categories.html">
-            <span class="nav-icon">🗂️</span>Категорії
-          </a>
-          <a class="nav-item" href="contact.html">
-            <span class="nav-icon">✉️</span>Зворотний зв'язок
-          </a>
-        </div>
-        <div class="nav-divider"></div>
-        <div class="nav-section">
-          <div class="nav-section-title">Спільноти</div>
-          <div id="sidebarCommunities"></div>
-        </div>
-        <div class="nav-divider"></div>
-        <div class="nav-section" style="padding-bottom: 16px">
-          <div style="padding: 4px; font-size: 11px; color: var(--muted); line-height: 1.8;">
-            © <span id="currentYear"></span> GOAT Forum
-          </div>
-        </div>
-      </aside>
+<aside class="sidebar-left">
+  <div class="sidebar-top-content">
+    <div class="nav-section">
+      <a class="nav-item" href="index.html" id="nav-home"><span class="nav-icon">🏠</span>Головна</a>
+      <a class="nav-item" href="popular.html" id="nav-popular"><span class="nav-icon">🔥</span>Популярне</a>
+      <a class="nav-item" href="categories.html" id="nav-cats"><span class="nav-icon">🗂️</span>Категорії</a>
+      <a class="nav-item" href="contact.html" id="nav-contact"><span class="nav-icon">✉️</span>Зворотний зв'язок</a>
+    </div>
+    
+    <div class="nav-divider"></div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Спільноти</div>
+      <div id="sidebarCommunities"></div>
+    </div>
+  </div>
 
+  <div class="sidebar-footer">
+    <div class="nav-divider"></div>
+    <nav class="footer-sidebar-links">
+      <a href="rules.html">Правила</a>
+      <a href="privacy.html">Конфіденційність</a>
+      <a href="terms.html">Угода</a>
+    </nav>
+    <div class="footer-copyright">
+      © <span id="currentYear"></span> GOAT Forum
+    </div>
+  </div>
+</aside>
       <!-- MAIN -->
       <main>
         <div id="page-home" class="page active">
@@ -198,22 +205,7 @@
       </div>
     </div>
 
-    <!-- ═══════════ FOOTER (однаковий на всіх сторінках) ═══════════ -->
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div class="footer-brand">
-          <span class="footer-logo">🐐 GOAT Forum</span>
-          <span class="footer-copy">© <span class="footer-year"></span> Усі права захищені</span>
-        </div>
-        <nav class="footer-links">
-          <a href="index.html">Головна</a>
-          <a href="popular.html">Популярне</a>
-          <a href="categories.html">Категорії</a>
-          <a href="contact.html">Контакти</a>
-        </nav>
-      </div>
-    </footer>
-    <!-- ═══════════ END FOOTER ═══════════ -->
+   
 
     <div class="toast" id="toast"></div>
     <script type="module" src="/app.js"></script>

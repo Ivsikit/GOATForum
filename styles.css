@@ -196,25 +196,8 @@ header {
   border: 2px solid var(--surface);
 }
 
-/* LAYOUT */
-.layout {
-  display: grid;
-  grid-template-columns: var(--sidebar) 1fr 312px;
-  gap: 0;
-  margin-top: var(--header);
-  min-height: calc(100vh - var(--header));
-}
-
 /* LEFT SIDEBAR */
-.sidebar-left {
-  width: var(--sidebar);
-  position: sticky;
-  top: var(--header);
-  height: calc(100vh - var(--header));
-  overflow-y: auto;
-  border-right: 1px solid var(--border);
-  padding: 12px 0;
-}
+
 .nav-section {
   padding: 0 12px;
   margin-bottom: 8px;
@@ -380,14 +363,14 @@ main {
 }
 
 /* POST CARD */
+/* POST CARD */
 .post-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   margin-bottom: 10px;
   display: flex;
-  /* overflow: hidden;  <-- ПРИБЕРИ АБО ЗАКОМЕНТУЙ ЦЕЙ РЯДОК */
-  overflow: visible; /* Дозволь контенту "дихати" */
+  overflow: hidden; /* 🛑 ПОВЕРНУЛИ ЦЕЙ РЯДОК: він ховає виступаючі гострі кути */
   transition: border-color 0.2s;
   cursor: pointer;
 }
@@ -395,9 +378,10 @@ main {
   border-color: var(--muted);
 }
 .post-vote {
-  width: 40px;
+  width: 48px; /* Трохи розширив, щоб кнопкам було комфортно */
   flex-shrink: 0;
   background: var(--surface2);
+  border-right: 1px solid var(--border); /* 🎨 ДОДАНО: красива роздільна лінія */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1342,9 +1326,6 @@ main {
   .layout {
     grid-template-columns: 1fr;
   }
-  .sidebar-left {
-    display: none;
-  }
   .featured-row {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1382,3 +1363,84 @@ main {
 textarea {
   resize: none !important;
 }
+
+#globalLoader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg); /* Використовує колір фону твого сайту */
+  z-index: 99999; /* Щоб перекривало абсолютно все */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+/* Клас, який JavaScript додасть, щоб сховати екран */
+#globalLoader.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loader-icon {
+  font-size: 56px;
+  animation: bounceLoader 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes bounceLoader {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-20px) scale(1.1); }
+}
+/* Оновлений сайдбар */
+/* ══════ LEFT SIDEBAR (ФІНАЛЬНИЙ ВАРІАНТ) ══════ */
+/* ══════ ПРАВИЛЬНИЙ ЛЕЯУТ ТА САЙДБАР ══════ */
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar) 1fr 312px; /* 260px | Контент | 312px */
+  gap: 0;
+  margin-top: var(--header);
+  min-height: calc(100vh - var(--header));
+}
+
+.sidebar-left {
+  width: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header));
+  position: sticky;
+  top: var(--header);
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  padding: 0;
+}
+
+.sidebar-top-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.sidebar-footer {
+  padding: 16px 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.footer-sidebar-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.footer-sidebar-links a {
+  font-size: 12px;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.footer-sidebar-links a:hover { color: var(--text); text-decoration: underline; }
+.footer-copyright { font-size: 11px; color: var(--muted); margin-top: 4px; }
