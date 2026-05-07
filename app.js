@@ -191,7 +191,6 @@ window.editPost = function(id) {
   const p = posts.find((x) => x.id === id);
   if (!p) return;
 
-  // Створюємо модалку "на льоту", щоб не міняти всі HTML файли
   let overlay = document.getElementById("editPostOverlay");
   if (!overlay) {
     overlay = document.createElement("div");
@@ -200,6 +199,16 @@ window.editPost = function(id) {
     overlay.onclick = (e) => closeIfOverlay(e, 'editPostOverlay');
     document.body.appendChild(overlay);
   }
+
+  // 🖼️ Готуємо блок попереднього перегляду поточного фото
+  const currentImageHtml = p.image_url 
+    ? `<div style="margin-bottom: 12px;">
+         <label style="display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">Поточне фото:</label>
+         <img src="${p.image_url}" style="width:100%; max-height:180px; object-fit:cover; border-radius:8px; border:1px solid var(--border);" />
+       </div>`
+    : `<div style="margin-bottom: 12px; padding: 15px; background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; text-align: center; color: var(--muted); font-size: 13px;">
+         📷 Фото ще не додано
+       </div>`;
 
   overlay.innerHTML = `
     <div class="modal" style="max-width: 540px" onclick="event.stopPropagation()">
@@ -216,26 +225,26 @@ window.editPost = function(id) {
         <textarea id="editPostBody" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px;resize:vertical;min-height:120px;outline:none">${p.body || ''}</textarea>
       </div>
 
+      ${currentImageHtml}
+
       <div class="form-field">
-        <label>Нове зображення (необов'язково)</label>
+        <label>Замінити зображення (необов'язково)</label>
         <input type="file" id="editPostImage" accept="image/*" 
           style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer" />
         <span class="field-hint" style="color:var(--muted); font-size:11px; margin-top:4px; display:block;">
-          ${p.image_url ? 'Залишіть порожнім, щоб зберегти старе фото.' : 'Залишіть порожнім, якщо фото не потрібне.'}
+          Виберіть новий файл, щоб оновити фото, або залиште порожнім.
         </span>
       </div>
 
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
         <button class="btn btn-ghost" style="border-radius:8px" onclick="closeModal('editPostOverlay')">Скасувати</button>
-        <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="saveEditPost(${p.id})">Зберегти</button>
+        <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="saveEditPost(${p.id})">Зберегти зміни</button>
       </div>
     </div>
   `;
   
-  // Показуємо модалку з анімацією
   setTimeout(() => overlay.classList.add("open"), 10);
 };
-
 window.saveEditPost = async function(id) {
   const title = document.getElementById("editPostTitle").value.trim();
   const body = document.getElementById("editPostBody").value.trim();
