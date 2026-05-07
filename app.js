@@ -186,65 +186,99 @@ async function submitPost() {
   showToast("✅ Пост опубліковано! +5 карми", "success");
 }
 
-function editPost(id) {
+window.editPost = function(id) {
+  if (!requireAuth()) return;
   const p = posts.find((x) => x.id === id);
   if (!p) return;
-  const pv = document.getElementById("postViewContent");
-  if (!pv) {
-    openPost(id);
-    setTimeout(() => editPost(id), 50);
-    return;
+
+  // Створюємо модалку "на льоту", щоб не міняти всі HTML файли
+  let overlay = document.getElementById("editPostOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.id = "editPostOverlay";
+    overlay.onclick = (e) => closeIfOverlay(e, 'editPostOverlay');
+    document.body.appendChild(overlay);
   }
-  setPage("post");
-  const opts = Object.entries(categoryConfig)
-    .map(
-      ([k, v]) =>
-        `<option value="${k}" ${p.sub === k ? "selected" : ""}>${v.emoji} ${k}</option>`,
-    )
-    .join("");
-  pv.innerHTML = `
-    <div style="margin-bottom:12px"><button class="action-btn" onclick="openPost(${id})">← Скасувати</button></div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px">
-      <h2 style="font-family:var(--font-head);font-size:1.2rem;margin-bottom:20px">✏️ Редагування поста</h2>
-      <div class="form-field"><label>Категорія</label>
-        <select id="editCategory" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px">${opts}</select></div>
-      <div class="form-field" style="margin-top:14px"><label>Заголовок</label>
-        <input id="editTitle" type="text" value="${p.title.replace(/"/g, "&quot;")}" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px"/></div>
-      <div class="form-field" style="margin-top:14px"><label>Текст</label>
-        <textarea id="editBody" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;min-height:140px">${p.body || ""}</textarea></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button class="btn btn-ghost" style="border-radius:8px" onclick="openPost(${id})">Скасувати</button>
-        <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="saveEditPost(${id})">Зберегти зміни</button>
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-width: 540px" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal('editPostOverlay')">✕</button>
+      <h2>✏️ Редагувати пост</h2>
+      
+      <div class="form-field">
+        <label>Заголовок</label>
+        <input type="text" id="editPostTitle" value="${p.title.replace(/"/g, '&quot;')}" maxlength="100" />
       </div>
-    </div>`;
-}
+      
+      <div class="form-field">
+        <label>Текст</label>
+        <textarea id="editPostBody" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px;resize:vertical;min-height:120px;outline:none">${p.body || ''}</textarea>
+      </div>
 
-async function saveEditPost(id) {
-  const title = document.getElementById("editTitle")?.value.trim();
-  const body = document.getElementById("editBody")?.value.trim();
-  const cat = document.getElementById("editCategory")?.value;
+      <div class="form-field">
+        <label>Нове зображення (необов'язково)</label>
+        <input type="file" id="editPostImage" accept="image/*" 
+          style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer" />
+        <span class="field-hint" style="color:var(--muted); font-size:11px; margin-top:4px; display:block;">
+          ${p.image_url ? 'Залишіть порожнім, щоб зберегти старе фото.' : 'Залишіть порожнім, якщо фото не потрібне.'}
+        </span>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-ghost" style="border-radius:8px" onclick="closeModal('editPostOverlay')">Скасувати</button>
+        <button class="btn btn-accent" style="border-radius:8px;padding:8px 24px" onclick="saveEditPost(${p.id})">Зберегти</button>
+      </div>
+    </div>
+  `;
+  
+  // Показуємо модалку з анімацією
+  setTimeout(() => overlay.classList.add("open"), 10);
+};
+
+window.saveEditPost = async function(id) {
+  const title = document.getElementById("editPostTitle").value.trim();
+  const body = document.getElementById("editPostBody").value.trim();
+  const imageInput = document.getElementById("editPostImage");
+  
   if (!title) {
-    showToast("Заголовок порожній!", "error");
+    showToast("Заголовок не може бути порожнім!", "error");
     return;
   }
 
-  const result = await updatePostDb(id, {
-    title,
-    body: body || "",
-    sub: cat,
-    is_edited: true,
-  });
+  showToast("⏳ Збереження змін...", "info");
+  
+  let updateData = { title: title, body: body };
 
-  if (result.success) {
-    await loadData();
-    renderFeed();
-    openPost(id);
-    showToast("✅ Пост оновлено!", "success");
-  } else {
-    showToast("Помилка оновлення!", "error");
+  // 📸 МАГІЯ ФОТО: Перевіряємо, чи вибрав користувач новий файл
+  if (imageInput.files && imageInput.files.length > 0) {
+    const file = imageInput.files[0];
+    showToast("⏳ Завантаження нового фото...", "info");
+    
+    // Завантажуємо фото у Supabase (функція вже є у твоєму db.js)
+    const imageUrl = await uploadPostImage(file);
+    
+    if (imageUrl) {
+      updateData.image_url = imageUrl; // Додаємо нове посилання до оновлення
+    } else {
+      showToast("❌ Помилка завантаження фото", "error");
+      return;
+    }
   }
-}
 
+  // Відправляємо оновлені дані в базу
+  const result = await updatePostDb(id, updateData);
+  
+  if (result.success) {
+    closeModal("editPostOverlay");
+    showToast("✅ Пост успішно оновлено!", "success");
+    
+    // Перезавантажуємо сторінку, щоб всі зміни миттєво з'явилися на екрані
+    setTimeout(() => window.location.reload(), 1000);
+  } else {
+    showToast("❌ Помилка при оновленні", "error");
+  }
+};
 function confirmDeletePost(id) {
   _pendingDeleteId = id;
   openModal("deleteConfirmOverlay");
