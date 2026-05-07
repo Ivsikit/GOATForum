@@ -120,11 +120,11 @@ export async function createCommentDb(commentData) {
 // Отримати всі коментарі конкретного користувача
 export async function fetchUserCommentsDb(userId) {
   const { data, error } = await supabase
-    .from('comments')
-    .select('*')
-    .eq('author_id', userId)
-    .order('created_at', { ascending: false });
-    
+    .from("comments")
+    .select("*")
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false });
+
   if (error) {
     console.error("Помилка завантаження коментарів користувача:", error);
     return [];
@@ -133,35 +133,38 @@ export async function fetchUserCommentsDb(userId) {
 }
 // Зберегти нове звернення
 export async function submitContactDb(data) {
-  const { error } = await supabase.from('contacts').insert([data]);
+  const { error } = await supabase.from("contacts").insert([data]);
   return { success: !error, error };
 }
 
 export async function fetchContactsDb() {
-  const { data, error } = await supabase.from('contacts').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("*")
+    .order("created_at", { ascending: false });
   return data || [];
 }
 
 export async function deleteContactDb(id) {
-  const { error } = await supabase.from('contacts').delete().eq('id', id);
+  const { error } = await supabase.from("contacts").delete().eq("id", id);
   return { success: !error, error };
 }
 export async function updateContactStatusDb(id, status) {
   const { error } = await supabase
-    .from('contacts')
+    .from("contacts")
     .update({ status })
-    .eq('id', id);
+    .eq("id", id);
   return { success: !error, error };
 }
 // Завантаження фото у сховище
 export async function uploadPostImage(file) {
   // Створюємо унікальне ім'я файлу, щоб вони не перезаписувались
-  const fileExt = file.name.split('.').pop();
+  const fileExt = file.name.split(".").pop();
   const fileName = `${Math.random()}.${fileExt}`;
   const filePath = `uploads/${fileName}`;
 
   const { data, error } = await supabase.storage
-    .from('post-images')
+    .from("post-images")
     .upload(filePath, file);
 
   if (error) {
@@ -171,38 +174,40 @@ export async function uploadPostImage(file) {
 
   // Отримуємо публічне посилання на файл
   const { data: urlData } = supabase.storage
-    .from('post-images')
+    .from("post-images")
     .getPublicUrl(filePath);
 
   return urlData.publicUrl;
 }
 export async function fetchSavedPostsIds(userId) {
   const { data, error } = await supabase
-    .from('saved_posts')
-    .select('post_id')
-    .eq('user_id', userId);
-  
+    .from("saved_posts")
+    .select("post_id")
+    .eq("user_id", userId);
+
   if (error) return [];
-  return data.map(item => item.post_id);
+  return data.map((item) => item.post_id);
 }
 
 // Перемкнути статус збереження (додати/видалити)
 export async function toggleSavePostDb(userId, postId) {
   // Перевіряємо, чи вже є такий запис
   const { data } = await supabase
-    .from('saved_posts')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('post_id', postId)
+    .from("saved_posts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("post_id", postId)
     .single();
 
   if (data) {
     // Якщо є — видаляємо
-    await supabase.from('saved_posts').delete().eq('id', data.id);
-    return { action: 'removed' };
+    await supabase.from("saved_posts").delete().eq("id", data.id);
+    return { action: "removed" };
   } else {
     // Якщо немає — створюємо
-    await supabase.from('saved_posts').insert([{ user_id: userId, post_id: postId }]);
-    return { action: 'added' };
+    await supabase
+      .from("saved_posts")
+      .insert([{ user_id: userId, post_id: postId }]);
+    return { action: "added" };
   }
 }

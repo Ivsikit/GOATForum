@@ -1376,7 +1376,9 @@ textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.4s ease, visibility 0.4s ease;
+  transition:
+    opacity 0.4s ease,
+    visibility 0.4s ease;
 }
 
 /* Клас, який JavaScript додасть, щоб сховати екран */
@@ -1391,8 +1393,12 @@ textarea {
 }
 
 @keyframes bounceLoader {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(-20px) scale(1.1); }
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-20px) scale(1.1);
+  }
 }
 /* Оновлений сайдбар */
 /* ══════ LEFT SIDEBAR (ФІНАЛЬНИЙ ВАРІАНТ) ══════ */
@@ -1442,5 +1448,12 @@ textarea {
   transition: color 0.2s;
 }
 
-.footer-sidebar-links a:hover { color: var(--text); text-decoration: underline; }
-.footer-copyright { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.footer-sidebar-links a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.footer-copyright {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
