@@ -1,7 +1,8 @@
 // ════════════════════════════════════════════
 //  AUTH — сесія, вхід, реєстрація, вихід, профіль, хедер
 // ════════════════════════════════════════════
-
+import {loginUserDb, fetchSavedPostsIds, registerUserDb } from "./api.js";
+import { renderHeader} from "./render.js";
 export function setCurrentUser(u) {
   localStorage.setItem("goat_currentUser", JSON.stringify(u));
 }
