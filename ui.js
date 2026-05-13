@@ -1,7 +1,11 @@
 // ════════════════════════════════════════════
 //  UI — dropdown, пошук, сортування, модалки, toast, утиліти
 // ════════════════════════════════════════════
-import {loginUserDb } from "./api.js";
+import { getCurrentUser, updateStoredUser, requireAuth, doSignin, doSignup } from "./auth.js";
+
+
+import { renderSidebarCommunities, renderHeader, renderFeed } from "./render.js";
+import { setPage } from "./pages.js";
 let toastTimer;
 export function toggleDropdown() {
   const dd = document.getElementById("avatarDropdown");
@@ -15,195 +19,17 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".avatar-wrap")) closeDropdown();
 });
 
-export async function doSignin() {
-  const email = document.getElementById("loginEmail").value.trim();
-  const password = document.getElementById("loginPassword").value;
-  const err = document.getElementById("loginError");
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    err.textContent = "❌ Введіть коректний email";
-    err.classList.add("show");
-    return;
-  }
-  if (!password) {
-    err.textContent = "❌ Введіть пароль";
-    err.classList.add("show");
-    return;
-  }
 
-  const result = await loginUserDb(email, password);
 
-  if (!result.success) {
-    err.textContent = result.message;
-    err.classList.add("show");
-    return;
-  }
 
-  err.classList.remove("show");
-  setCurrentUser(result.user);
-  const savedIds = await fetchSavedPostsIds(result.user.id);
-  result.user.savedPosts = savedIds;
-  setCurrentUser(result.user);
-  closeModal("loginOverlay");
 
-  renderHeader();
 
-  // ПЕРЕВІРКА: якщо ми зараз дивимось пост, оновлюємо його вміст
-  if (currentPostId !== null) {
-    await openPost(currentPostId);
-  } else {
-    renderFeed();
-  }
 
-  showToast("✅ Ласкаво просимо, " + result.user.name + "!", "success");
-}
 
-export async function doSignup() {
-  const name = document.getElementById("regName").value.trim();
-  const email = document.getElementById("regEmail").value.trim();
-  const password = document.getElementById("regPassword").value;
-  const err = document.getElementById("registerError");
 
-  if (!name || name.length < 2) {
-    err.textContent = "❌ Введіть ім'я";
-    err.classList.add("show");
-    return;
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    err.textContent = "❌ Введіть коректний email";
-    err.classList.add("show");
-    return;
-  }
-  if (password.length < 8) {
-    err.textContent = "❌ Пароль мінімум 8 символів";
-    err.classList.add("show");
-    return;
-  }
 
-  const result = await registerUserDb(name, email, password);
 
-  if (!result.success) {
-    err.textContent = result.message;
-    err.classList.add("show");
-    return;
-  }
-
-  err.classList.remove("show");
-  setCurrentUser(result.user);
-  const savedIds = await fetchSavedPostsIds(result.user.id);
-  result.user.savedPosts = savedIds;
-  setCurrentUser(result.user);
-  closeModal("registerOverlay");
-
-  renderHeader();
-
-  // ПЕРЕВІРКА: якщо ми реєструємось, знаходячись у пості, оновлюємо його
-  if (currentPostId !== null) {
-    await openPost(currentPostId);
-  } else {
-    renderFeed();
-  }
-
-  showToast("✅ Акаунт створено!", "success");
-}
-
-export function doSignout() {
-  signout();
-  renderHeader();
-  renderFeed();
-  setPage("home");
-  showToast("До побачення!");
-}
-export function requireAuth() {
-  if (!isAuthenticated()) {
-    openModal("loginOverlay");
-    return false;
-  }
-  return true;
-}
-
-export async function postComment(postId) {
-  const box = document.getElementById("commentBox");
-  const text = box?.value.trim();
-  if (!text) return;
-
-  const user = getCurrentUser();
-  if (!user) {
-    showToast("Увійдіть, щоб коментувати", "error");
-    return;
-  }
-
-  // 1. Відправляємо в Supabase
-  const result = await createCommentDb({
-    post_id: postId,
-    author_id: user.id,
-    author_name: user.name,
-    text: text,
-  });
-
-  if (result.success) {
-    // 2. Оновлюємо лічильник коментарів у самому пості (необов'язково, але корисно)
-    const p = posts.find((x) => x.id === postId);
-    if (p) {
-      p.comments = (p.comments || 0) + 1;
-      await updatePostDb(postId, { comments_count: p.comments });
-    }
-
-    // 3. Додаємо карму користувачу
-    user.karma = (user.karma || 0) + 1;
-    updateStoredUser(user);
-
-    // 4. Оновлюємо сторінку
-    await openPost(postId);
-    showToast("✅ Коментар додано!", "success");
-  } else {
-    showToast("Помилка при додаванні", "error");
-  }
-}
-
-export function castVote(id, dir) {
-  if (!requireAuth()) return;
-  voteMap[id] = voteMap[id] === dir ? 0 : dir;
-  renderFeed();
-}
-export async function savePost(id, btn) {
-  if (!requireAuth()) return;
-  const user = getCurrentUser();
-
-  const result = await toggleSavePostDb(user.id, id);
-
-  if (!user.savedPosts) user.savedPosts = [];
-
-  if (result.action === "added") {
-    user.savedPosts.push(id);
-    showToast("🔖 Збережено!", "success");
-    // 🎨 Миттєво фарбуємо кнопку в синій колір
-    if (btn) {
-      btn.innerHTML = "🔖 Збережено";
-      btn.style.color = "var(--green)";
-    }
-  } else {
-    user.savedPosts = user.savedPosts.filter((postId) => postId !== id);
-    showToast("🔖 Видалено зі збереженого", "info");
-    // 🎨 Повертаємо кнопці стандартний вигляд
-    if (btn) {
-      btn.innerHTML = "🔖 Зберегти";
-      btn.style.color = "";
-    }
-  }
-
-  updateStoredUser(user);
-
-  // Якщо ми в профілі на вкладці збереженого — перемальовуємо список
-  if (
-    document.getElementById("page-profile")?.classList.contains("active") &&
-    profileTab === "saved"
-  ) {
-    renderProfile("saved");
-  }
-}
 
 // ════════════════════════════════════════════
 //  ДОПОМІЖНІ ФУНКЦІЇ ТА НАВІГАЦІЯ

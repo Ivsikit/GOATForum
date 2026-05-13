@@ -6,12 +6,12 @@ import { supabase } from "./api.js";
 
 // Імпортуємо функції (переконайся, що в цих файлах стоїть 'export' перед ними)
 import { loadData } from "./data.js";
-import { setPage, openPost, handleRoute, openUserProfile } from "./pages.js";
-import { renderHeader, renderFeed, renderSidebarCommunities } from "./render.js";
+import { setPage, openPost, handleRoute, openUserProfile, renderProfile, goProfile } from "./pages.js";
+import { renderHeader, renderFeed, renderSidebarCommunities, renderCategorySearch } from "./render.js";
 import { getCurrentUser, setCurrentUser, doSignin, doSignup, doSignout, requireAuth } from "./auth.js";
 import { submitPost, editPost, saveEditPost, confirmDeletePost, deletePost, castVote, savePost, postComment,previewImage } from "./posts.js";
 import { openAdminPanel, switchAdminTab, changeUserRole, deleteUser, saveCat, deleteCatConfirmed, startDeleteCat, startEditCat, showCatForm, hideCatForm,submitContactForm,deleteMessage, changeMessageStatus, filterAdminUsers, setAdminUsersPage, setAdminPostsPage, setAdminMessagesPage } from "./admin.js";
-import { showToast, openModal, closeModal, closeIfOverlay, shareProfile,toggleDropdown, closeDropdown,sharePost,toggleJoinCategory, filterByCategory } from "./ui.js";
+import { showToast, openModal, closeModal, closeIfOverlay, shareProfile,toggleDropdown, closeDropdown,sharePost,toggleJoinCategory, filterByCategory, setSort } from "./ui.js";
 
 // ════════════════════════════════════════════
 //  ГЛОБАЛЬНИЙ СТАН (Доступний у всіх файлах)
@@ -33,6 +33,11 @@ async function initApp() {
   
   // 1. Завантажуємо категорії та пости з бази
   await loadData(); 
+  const catSearchInput = document.getElementById("catSearchInput");
+  if (catSearchInput) {
+    renderCategorySearch(); // Малюємо сітку при завантаженні
+    catSearchInput.addEventListener("input", renderCategorySearch); // Слухаємо введення тексту
+  }
   
   // 2. Малюємо шапку (вхід/профіль)
   renderHeader();
@@ -123,6 +128,9 @@ window.renderSidebarCommunities = renderSidebarCommunities;
 window.changeUserRole = changeUserRole;
 window.deleteUser = deleteUser;
 window.filterByCategory = filterByCategory;
+window.setSort = setSort;
+window.renderProfile = renderProfile;
+window.goProfile = goProfile;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')

@@ -3,7 +3,11 @@
 // ════════════════════════════════════════════
 import { isAdmin, getCurrentUser } from "./auth.js";
 import { showToast, openModal, closeModal } from "./ui.js";
-import { supabase,fetchUsers, fetchContactsDb, updateContactStatusDb } from "./api.js";
+import { supabase, fetchUsers, fetchContactsDb, updateContactStatusDb, submitContactDb, deleteContactDb } from "./api.js";
+import { loadData } from "./data.js";
+import { renderSidebarCommunities, renderHeader, renderFeed } from "./render.js";
+import { editPost, confirmDeletePost } from "./posts.js";
+import { openUserProfile } from "./pages.js";
 export const ITEMS_PER_PAGE = 15; 
 export let adminPostsPage = 1;
 export let adminMessagesPage = 1;

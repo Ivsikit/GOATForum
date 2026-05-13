@@ -1,9 +1,12 @@
 // ════════════════════════════════════════════
 //  POSTS — CRUD, коментарі, голосування, зображення
 // ════════════════════════════════════════════
-import {deletePostDb, toggleSavePostDb } from "./api.js";
+import { deletePostDb, toggleSavePostDb, createPostDb, updatePostDb, createCommentDb, uploadPostImage } from "./api.js";
 import { loadData } from "./data.js";
 import { requireAuth, getCurrentUser, updateStoredUser} from "./auth.js";
+import { openModal, closeModal, closeIfOverlay, showToast } from "./ui.js";
+import { renderHeader, renderFeed } from "./render.js";
+import { openPost, setPage, renderProfile } from "./pages.js";
 let _pendingDeleteId = null;
 export async function submitPost() {
   const title = document.getElementById("postTitle").value.trim();

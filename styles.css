@@ -1457,3 +1457,55 @@ textarea {
   color: var(--muted);
   margin-top: 4px;
 }
+/* ════════════════════════════════════════════ */
+/* СТОРІНКА КАТЕГОРІЙ                           */
+/* ════════════════════════════════════════════ */
+.cat-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.cat-browse-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+}
+.cat-browse-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.cat-browse-top {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+.cat-browse-body {
+  padding: 12px 14px;
+}
+.cat-browse-name {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.cat-browse-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.cat-browse-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+/* Стиль для поля пошуку при натисканні (замість inline JS) */
+#catSearchInput:focus {
+  border-color: var(--blue) !important;
+}

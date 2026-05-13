@@ -1,10 +1,13 @@
 // ════════════════════════════════════════════
 //  PAGES — openPost, setPage, профіль, роутер
 // ════════════════════════════════════════════
-import { isAdmin, isAuthenticated, getCurrentUser,getAuthorName  } from "./auth.js";
-import { filterByCategory, fmtNum, linkify } from "./ui.js"
-import { fetchUsers, fetchCommentsDb, fetchContactsDb } from "./api.js";
-import { renderComment } from "./render.js";
+import { isAdmin, isAuthenticated, getCurrentUser, requireAuth  } from "./auth.js";
+import { filterByCategory, fmtNum, linkify, getUserColor, sharePost, shareProfile, openModal } from "./ui.js";
+import { fetchUsers, fetchCommentsDb, fetchContactsDb, fetchUserCommentsDb } from "./api.js";
+import { renderComment, renderFeed, postCard } from "./render.js";
+import { postComment, castVote, savePost, editPost, confirmDeletePost } from "./posts.js";
+import { openAdminPanel, switchAdminTab } from "./admin.js";
+import { getAuthorName } from "./data.js";
 export async function openPost(rawId) {
   // 🛡️ МАГІЧНИЙ ЩИТ
   const pv = document.getElementById("postViewContent");

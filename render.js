@@ -1,8 +1,11 @@
 // ════════════════════════════════════════════
 //  RENDER — хедер, сайдбар, стрічка, картки постів
 // ════════════════════════════════════════════
-import{getCurrentUser,isAdmin} from "./auth.js";
-import { getUserColor, fmtNum, linkify } from "./ui.js"
+import{getCurrentUser,isAdmin, doSignout} from "./auth.js";
+import { getUserColor, fmtNum, linkify,  toggleDropdown, closeDropdown, toggleJoinCategory, filterByCategory, sharePost, toggleJoin, openModal } from "./ui.js";
+import { castVote, savePost, editPost, confirmDeletePost } from "./posts.js";
+import { openPost, goProfile } from "./pages.js";
+import { openAdminPanel } from "./admin.js";
 export function renderSidebarCommunities() {
   const sc = document.getElementById("sidebarCommunities");
   if (!sc) return; // 🛡️ Щит для лівого меню
@@ -215,4 +218,57 @@ export function renderComment(c) {
 // Допоміжна функція для отримання імені автора
 export function getAuthorName(post) {
   return post.authorName || "Невідомий";
+}
+let isSidebarRendered = false;
+
+export function renderCategorySearch() {
+  if (typeof categoryConfig === "undefined" || !Object.keys(categoryConfig).length) return;
+
+  // 1. Рендеримо сайдбар 1 раз (щоб не дублювався)
+  if (!isSidebarRendered) {
+    const sidebar = document.getElementById("sidebarCommunities");
+    if (sidebar) sidebar.innerHTML = ""; 
+    renderSidebarCommunities();
+    isSidebarRendered = true;
+  }
+
+  // 2. Шукаємо поле вводу і сітку
+  const grid = document.getElementById("categoryBrowseGrid");
+  if (!grid) return;
+
+  const searchInput = document.getElementById("catSearchInput");
+  const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+  let entries = Object.entries(categoryConfig);
+
+  // 3. Фільтруємо
+  if (query) {
+    entries = entries.filter(
+      ([key, v]) =>
+        key.toLowerCase().includes(query) ||
+        (v.desc && v.desc.toLowerCase().includes(query)),
+    );
+  }
+
+  // 4. Малюємо результат
+  if (entries.length === 0) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted); background: var(--surface); border-radius: 12px; border: 1px dashed var(--border);">Спільнот за запитом "<b>${query}</b>" не знайдено 😢</div>`;
+    return;
+  }
+
+  grid.innerHTML = entries
+    .map(([key, v]) => {
+      const count = typeof posts !== "undefined" ? posts.filter((p) => p.sub === key).length : 0;
+      const url = "index.html#category-" + encodeURIComponent(key);
+      
+      return `<a class="cat-browse-card" href="${url}">
+        <div class="cat-browse-top" style="background:${v.color}20">${v.emoji}</div>
+        <div class="cat-browse-body">
+          <div class="cat-browse-name">${key}</div>
+          <div class="cat-browse-desc">${v.desc || "Спільнота форуму"}</div>
+          <div class="cat-browse-count">📝 ${count} постів</div>
+        </div>
+      </a>`;
+    })
+    .join("");
 }
