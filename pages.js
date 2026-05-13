@@ -108,6 +108,7 @@ export async function openPost(rawId) {
   setPage("post");
 }
 
+//
 export function setPage(name) {
   const adminPanel = document.getElementById("adminPanel");
   if (adminPanel) adminPanel.style.display = "none";
@@ -120,20 +121,18 @@ export function setPage(name) {
     currentPostId = null;
     currentCategory = null;
 
-    if (window.location.pathname.toLowerCase().includes("popular.html")) {
-      const sortedPosts = [...posts].sort((a, b) => b.votes - a.votes);
-      renderFeed(sortedPosts);
+    // 🛑 ГЕНІАЛЬНИЙ ФІКС: Замість складних фільтрів просто "клікаємо" активну кнопку сортування.
+    // Вона сама перевірить: чи ми на Головній, чи в Популярному, і правильно все відмалює!
+    const activeSort = document.querySelector(".sort-btn.active");
+    if (activeSort) {
+      activeSort.click();
     } else {
-      renderFeed();
+      renderFeed(); // Запасний варіант
     }
   }
 
-  document
-    .querySelectorAll(".page")
-    .forEach((p) => p.classList.remove("active"));
-  const targetPage =
-    document.getElementById("page-" + name) ||
-    document.getElementById("page-home");
+  document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+  const targetPage = document.getElementById("page-" + name) || document.getElementById("page-home");
   if (targetPage) targetPage.classList.add("active");
 
   window.scrollTo(0, 0);

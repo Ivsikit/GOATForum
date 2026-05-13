@@ -11,7 +11,7 @@ import { renderHeader, renderFeed, renderSidebarCommunities, renderCategorySearc
 import { getCurrentUser, setCurrentUser, doSignin, doSignup, doSignout, requireAuth } from "./auth.js";
 import { submitPost, editPost, saveEditPost, confirmDeletePost, deletePost, castVote, savePost, postComment,previewImage } from "./posts.js";
 import { openAdminPanel, switchAdminTab, changeUserRole, deleteUser, saveCat, deleteCatConfirmed, startDeleteCat, startEditCat, showCatForm, hideCatForm,submitContactForm,deleteMessage, changeMessageStatus, filterAdminUsers, setAdminUsersPage, setAdminPostsPage, setAdminMessagesPage } from "./admin.js";
-import { showToast, openModal, closeModal, closeIfOverlay, shareProfile,toggleDropdown, closeDropdown,sharePost,toggleJoinCategory, filterByCategory, setSort } from "./ui.js";
+import { showToast, openModal, closeModal, closeIfOverlay, shareProfile, toggleDropdown, closeDropdown,sharePost, filterByCategory, setSort, handleSearch, toggleJoin, toggleJoinCategory} from "./ui.js";
 
 // ════════════════════════════════════════════
 //  ГЛОБАЛЬНИЙ СТАН (Доступний у всіх файлах)
@@ -25,6 +25,7 @@ window.adminMessagesCache = [];
 window.currentPostId = null;
 window.currentCategory = null;
 
+
 // ════════════════════════════════════════════
 //  ІНІЦІАЛІЗАЦІЯ ПРОЄКТУ
 // ════════════════════════════════════════════
@@ -33,6 +34,7 @@ async function initApp() {
   
   // 1. Завантажуємо категорії та пости з бази
   await loadData(); 
+  
   const catSearchInput = document.getElementById("catSearchInput");
   if (catSearchInput) {
     renderCategorySearch(); // Малюємо сітку при завантаженні
@@ -54,16 +56,14 @@ async function initApp() {
     window.location.hash = "#admin-dashboard";
   }
 
+  // 🛑 ОСЬ ВІДНОВЛЕНИЙ БЛОК, ЯКИЙ ТИ ВИПАДКОВО ВИДАЛИВ:
+  //
+  // 🛑 ОСЬ ЯК ЧИСТО ТЕПЕР ВИГЛЯДАЄ РОУТИНГ В initApp():
   if (window.location.hash) {
     await handleRoute();
   } else {
-    // Логіка для головних сторінок
-    if (path.includes("popular")) {
-      const sorted = [...window.posts].sort((a, b) => b.votes - a.votes);
-      renderFeed(sorted);
-    } else if (!path.includes("admin") && !path.includes("categor")) {
-      setPage("home");
-    }
+    // Вся магія тепер прихована тут!
+    setPage("home");
   }
 }
 
@@ -131,6 +131,8 @@ window.filterByCategory = filterByCategory;
 window.setSort = setSort;
 window.renderProfile = renderProfile;
 window.goProfile = goProfile;
+window.handleSearch = handleSearch;
+window.toggleJoin = toggleJoin;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')

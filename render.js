@@ -120,11 +120,34 @@ export function renderFeed(data) {
     </div>`;
   }
 
+  // Збираємо всі пости до купи
   html += list.map((p) => postCard(p)).join("");
-  feedContainer.innerHTML =
-    html ||
-    `<div style="text-align:center; padding:40px; color:var(--muted)">Постів ще немає</div>`;
 
+  // 🛑 ОСЬ ТОЙ САМИЙ НОВИЙ БЛОК: Розумна перевірка на порожню стрічку
+  if (list.length === 0) {
+    const isHome = !currentCategory && (window.location.pathname.includes("index.html") || window.location.pathname === "/");
+    
+    if (isHome) {
+      feedContainer.innerHTML = `
+        <div style="text-align:center; padding:60px 20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; animation: fadeIn 0.4s ease;">
+          <div style="font-size:48px; margin-bottom:16px;">🏠</div>
+          <h2 style="font-family:var(--font-head); margin-bottom:8px;">Ваша стрічка поки порожня</h2>
+          <p style="color:var(--muted); margin-bottom:24px; max-width:400px; margin-left:auto; margin-right:auto;">
+            Підпишіться на цікаві спільноти, щоб бачити тут їхні останні новини.
+          </p>
+          <a href="categories.html" class="btn btn-accent" style="text-decoration:none; padding:10px 24px; border-radius:8px;">
+            🔍 Переглянути категорії
+          </a>
+        </div>`;
+    } else {
+      feedContainer.innerHTML = `<div style="text-align:center; padding:40px; color:var(--muted)">Постів ще немає</div>`;
+    }
+  } else {
+    // Якщо пости є - просто вставляємо їх
+    feedContainer.innerHTML = html;
+  }
+
+  // ✅ Ці функції безпечно залишаються в самому кінці
   renderFeatured(list);
   renderSidebarCommunities();
 }

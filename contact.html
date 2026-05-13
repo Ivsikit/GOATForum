@@ -4,127 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GOAT Forum — Зворотний зв'язок</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
-    <style>
-      .contact-layout {
-        max-width: 640px;
-        margin: 0 auto;
-        padding: 32px 16px;
-      }
-      .contact-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 32px;
-      }
-      .contact-card h1 {
-        font-family: var(--font-head);
-        font-size: 1.6rem;
-        font-weight: 800;
-        margin-bottom: 6px;
-      }
-      .contact-card .subtitle {
-        color: var(--muted);
-        font-size: 14px;
-        margin-bottom: 28px;
-      }
-      .contact-card .form-field {
-        margin-bottom: 16px;
-      }
-      .contact-card label {
-        display: block;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 6px;
-      }
-      .contact-card input,
-      .contact-card textarea {
-        width: 100%;
-        background: var(--bg);
-        border: 1px solid var(--border);
-        color: var(--text);
-        font-family: var(--font-body);
-        font-size: 14px;
-        padding: 10px 14px;
-        border-radius: 8px;
-        outline: none;
-        transition: border-color 0.15s;
-      }
-      .contact-card input:focus,
-      .contact-card textarea:focus {
-        border-color: var(--blue);
-      }
-      .contact-card textarea {
-        resize: vertical;
-        min-height: 130px;
-      }
-      .contact-info-row {
-        display: flex;
-        gap: 16px;
-        margin-top: 24px;
-        padding-top: 20px;
-        border-top: 1px solid var(--border);
-        flex-wrap: wrap;
-      }
-      .contact-info-item {
-        flex: 1;
-        min-width: 140px;
-        background: var(--surface2);
-        border-radius: 10px;
-        padding: 14px 16px;
-      }
-      .contact-info-icon {
-        font-size: 22px;
-        margin-bottom: 6px;
-      }
-      .contact-info-label {
-        font-size: 11px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 2px;
-      }
-      .contact-info-value {
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .success-msg {
-        display: none;
-        background: rgba(63, 185, 80, 0.1);
-        border: 1px solid rgba(63, 185, 80, 0.3);
-        color: var(--green);
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 14px;
-        margin-bottom: 16px;
-      }
-      .success-msg.show {
-        display: block;
-      }
-    </style>
   </head>
   <body>
     <div id="globalLoader">
       <div class="loader-icon">🐐</div>
-      <h2
-        style="
-          font-family: var(--font-head);
-          margin-top: 16px;
-          color: var(--text);
-          font-size: 1.2rem;
-        "
-      >
+      <h2 style="font-family: var(--font-head); margin-top: 16px; color: var(--text); font-size: 1.2rem;">
         Завантаження форуму...
       </h2>
     </div>
-    <!-- ═══════════ HEADER ═══════════ -->
+
     <header>
       <a class="logo" href="index.html">
         <div class="logo-icon">🐐</div>
@@ -132,33 +22,14 @@
       </a>
       <div class="search-bar">
         <span style="color: var(--muted)">🔍</span>
-        <input
-          type="text"
-          placeholder="Пошук по форуму…"
-          oninput="
-            if (typeof handleSearch === 'function') handleSearch(this.value);
-          "
-        />
+        <input type="text" placeholder="Пошук по форуму…" oninput="handleSearch(this.value)" />
       </div>
       <div class="header-actions" id="headerActions"></div>
     </header>
-    <!-- ═══════════ END HEADER ═══════════ -->
 
-    <!-- Simple single-column layout for this page -->
     <div style="margin-top: var(--header)">
-      <!-- Breadcrumb nav strip -->
-      <div
-        style="
-          background: var(--surface);
-          border-bottom: 1px solid var(--border);
-          padding: 8px 24px;
-          font-size: 13px;
-          color: var(--muted);
-        "
-      >
-        <a href="index.html" style="color: var(--muted); text-decoration: none"
-          >Головна</a
-        >
+      <div style="background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 24px; font-size: 13px; color: var(--muted);">
+        <a href="index.html" style="color: var(--muted); text-decoration: none">Головна</a>
         <span style="margin: 0 8px">›</span>
         <span style="color: var(--text)">Зворотний зв'язок</span>
       </div>
@@ -166,55 +37,28 @@
       <div class="contact-layout">
         <div class="contact-card">
           <h1>✉️ Зворотний зв'язок</h1>
-          <p class="subtitle">
-            Маєте питання, пропозиції або скарги? Ми відповімо якомога швидше.
-          </p>
+          <p class="subtitle">Маєте питання, пропозиції або скарги? Ми відповімо якомога швидше.</p>
 
           <div class="success-msg" id="contactSuccess">
             ✅ Ваше звернення надіслано! Ми зв'яжемось з вами найближчим часом.
           </div>
 
-          <form id="contactForm" onsubmit="handleContactSubmit(event)">
+          <form id="contactForm" onsubmit="event.preventDefault(); submitContactForm();">
             <div class="form-field">
               <label>Ім'я <span style="color: var(--accent)">*</span></label>
-              <input
-                type="text"
-                id="contactName"
-                placeholder="Ваше ім'я"
-                required
-                minlength="2"
-              />
+              <input type="text" id="contactName" placeholder="Ваше ім'я" required minlength="2" />
               <span class="field-hint">Мінімум 2 символи</span>
             </div>
 
             <div class="form-field">
               <label>Email <span style="color: var(--accent)">*</span></label>
-              <input
-                type="email"
-                id="contactEmail"
-                placeholder="you@example.com"
-                required
-                title="Введіть коректний email"
-              />
+              <input type="email" id="contactEmail" placeholder="you@example.com" required title="Введіть коректний email" />
               <span class="field-hint">Формат: name@example.com</span>
             </div>
 
             <div class="form-field">
               <label>Тема</label>
-              <select
-                id="contactSubject"
-                style="
-                  width: 100%;
-                  background: var(--bg);
-                  border: 1px solid var(--border);
-                  color: var(--text);
-                  font-family: var(--font-body);
-                  font-size: 14px;
-                  padding: 10px 14px;
-                  border-radius: 8px;
-                  outline: none;
-                "
-              >
+              <select id="contactSubject">
                 <option value="general">Загальне питання</option>
                 <option value="bug">Помилка / баг</option>
                 <option value="suggestion">Пропозиція</option>
@@ -224,30 +68,12 @@
             </div>
 
             <div class="form-field">
-              <label
-                >Повідомлення <span style="color: var(--accent)">*</span></label
-              >
-              <textarea
-                id="contactMessage"
-                placeholder="Опишіть ваше питання або пропозицію…"
-                required
-                minlength="10"
-              ></textarea>
+              <label>Повідомлення <span style="color: var(--accent)">*</span></label>
+              <textarea id="contactMessage" placeholder="Опишіть ваше питання або пропозицію…" required minlength="10"></textarea>
               <span class="field-hint">Мінімум 10 символів</span>
             </div>
 
-            <button
-              type="submit"
-              class="btn btn-accent"
-              id="contactSubmitBtn"
-              style="
-                width: 100%;
-                padding: 11px;
-                border-radius: 8px;
-                font-size: 15px;
-                font-weight: 600;
-              "
-            >
+            <button type="submit" class="btn btn-accent" id="contactSubmitBtn" style="width: 100%; padding: 11px; border-radius: 8px; font-size: 15px; font-weight: 600;">
               Надіслати повідомлення
             </button>
           </form>
@@ -273,169 +99,45 @@
       </div>
     </div>
 
-    <!-- LOGIN -->
-    <div
-      class="overlay"
-      id="loginOverlay"
-      onclick="closeIfOverlay(event, 'loginOverlay')"
-    >
+    <div class="overlay" id="loginOverlay" onclick="closeIfOverlay(event, 'loginOverlay')">
       <div class="modal">
-        <button class="modal-close" onclick="closeModal('loginOverlay')">
-          ✕
-        </button>
+        <button class="modal-close" onclick="closeModal('loginOverlay')">✕</button>
         <h2>Ласкаво просимо!</h2>
         <p>Увійдіть у свій акаунт</p>
         <div class="auth-error" id="loginError"></div>
         <div class="form-field">
-          <label>Email</label
-          ><input
-            type="email"
-            id="loginEmail"
-            placeholder="you@example.com"
-            required
-          /><span class="field-hint">Формат: name@example.com</span>
+          <label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com" required /><span class="field-hint">Формат: name@example.com</span>
         </div>
         <div class="form-field">
-          <label>Пароль</label
-          ><input
-            type="password"
-            id="loginPassword"
-            placeholder="Ваш пароль"
-            required
-          />
+          <label>Пароль</label><input type="password" id="loginPassword" placeholder="Ваш пароль" required />
         </div>
-        <button
-          class="btn btn-accent"
-          style="
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-          "
-          onclick="doSignin()"
-        >
-          Увійти
-        </button>
+        <button class="btn btn-accent" style="width: 100%; padding: 10px; border-radius: 8px; font-size: 15px; font-weight: 600;" onclick="doSignin()">Увійти</button>
         <div class="modal-divider">або</div>
-        <div class="modal-footer">
-          Немає акаунту? <a onclick="switchToRegister()">Зареєструватись</a>
-        </div>
+        <div class="modal-footer">Немає акаунту? <a onclick="switchToRegister()">Зареєструватись</a></div>
       </div>
     </div>
-    <div
-      class="overlay"
-      id="registerOverlay"
-      onclick="closeIfOverlay(event, 'registerOverlay')"
-    >
+
+    <div class="overlay" id="registerOverlay" onclick="closeIfOverlay(event, 'registerOverlay')">
       <div class="modal">
-        <button class="modal-close" onclick="closeModal('registerOverlay')">
-          ✕
-        </button>
+        <button class="modal-close" onclick="closeModal('registerOverlay')">✕</button>
         <h2>Реєстрація</h2>
         <p>Приєднуйся до GOAT Forum</p>
         <div class="auth-error" id="registerError"></div>
         <div class="form-field">
-          <label>Ім'я</label
-          ><input
-            type="text"
-            id="regName"
-            placeholder="Ваше ім'я"
-            required
-            minlength="2"
-          /><span class="field-hint">Мінімум 2 символи</span>
+          <label>Ім'я</label><input type="text" id="regName" placeholder="Ваше ім'я" required minlength="2" /><span class="field-hint">Мінімум 2 символи</span>
         </div>
         <div class="form-field">
-          <label>Email</label
-          ><input
-            type="email"
-            id="regEmail"
-            placeholder="you@example.com"
-            required
-          /><span class="field-hint">Формат: name@example.com</span>
+          <label>Email</label><input type="email" id="regEmail" placeholder="you@example.com" required /><span class="field-hint">Формат: name@example.com</span>
         </div>
         <div class="form-field">
-          <label>Пароль</label
-          ><input
-            type="password"
-            id="regPassword"
-            placeholder="Мінімум 8 символів"
-            required
-            minlength="8"
-          /><span class="field-hint">Мінімум 8 символів</span>
+          <label>Пароль</label><input type="password" id="regPassword" placeholder="Мінімум 8 символів" required minlength="8" /><span class="field-hint">Мінімум 8 символів</span>
         </div>
-        <button
-          class="btn btn-accent"
-          style="
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-          "
-          onclick="doSignup()"
-        >
-          Створити акаунт
-        </button>
-        <div class="modal-footer" style="margin-top: 14px">
-          Вже є акаунт? <a onclick="switchToLogin()">Увійти</a>
-        </div>
+        <button class="btn btn-accent" style="width: 100%; padding: 10px; border-radius: 8px; font-size: 15px; font-weight: 600;" onclick="doSignup()">Створити акаунт</button>
+        <div class="modal-footer" style="margin-top: 14px">Вже є акаунт? <a onclick="switchToLogin()">Увійти</a></div>
       </div>
     </div>
 
     <div class="toast" id="toast"></div>
     <script type="module" src="/app.js"></script>
-    <script>
-      document
-        .querySelectorAll("#currentYear,.footer-year")
-        .forEach((el) => (el.textContent = new Date().getFullYear()));
-
-      async function handleContactSubmit(e) {
-        e.preventDefault();
-        const btn = document.getElementById("contactSubmitBtn");
-        const name = document.getElementById("contactName").value.trim();
-        const email = document.getElementById("contactEmail").value.trim();
-        const subject = document.getElementById("contactSubject").value;
-        const message = document.getElementById("contactMessage").value.trim();
-
-        // Client-side validation
-        if (!name || name.length < 2) {
-          alert("Введіть ім'я (мінімум 2 символи)");
-          return;
-        }
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          alert("Введіть коректний email");
-          return;
-        }
-        if (!message || message.length < 10) {
-          alert("Повідомлення має містити щонайменше 10 символів");
-          return;
-        }
-
-        btn.disabled = true;
-        btn.textContent = "Надсилання…";
-
-        try {
-          // Use submitContactForm from app.js if available
-          if (typeof submitContactForm === "function") {
-            await submitContactForm();
-          } else {
-            // Fallback: just show success
-            await new Promise((r) => setTimeout(r, 600));
-          }
-          document.getElementById("contactSuccess").classList.add("show");
-          document.getElementById("contactForm").reset();
-          btn.textContent = "✅ Надіслано!";
-          setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = "Надіслати повідомлення";
-          }, 3000);
-        } catch (err) {
-          btn.disabled = false;
-          btn.textContent = "Надіслати повідомлення";
-          alert("Помилка надсилання. Спробуйте пізніше.");
-        }
-      }
-    </script>
   </body>
 </html>

@@ -47,6 +47,17 @@ const avatarColors = [
   "#4527a0",
   "#0277bd",
 ];
+//
+// Глобальний масив кольорів у тебе вже є, просто додай функцію під ним:
+export function getUserColor(name) {
+  if (!name) return avatarColors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % avatarColors.length;
+  return avatarColors[index];
+}
 // Шукає посилання в тексті і робить їх клікабельними + додає попередження
 export function linkify(text) {
   if (!text) return "";
@@ -67,6 +78,7 @@ export function linkify(text) {
     return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: var(--blue); text-decoration: underline;" onclick="return confirm('${warningMsg}')">${url}</a>`;
   });
 }
+//
 export function toggleJoinCategory(cat, btn) {
   if (!requireAuth()) return;
   const user = getCurrentUser();
@@ -86,19 +98,18 @@ export function toggleJoinCategory(cat, btn) {
   }
 
   updateStoredUser(user);
-  renderSidebarCommunities(); // Оновлює ваш список справа
+  renderSidebarCommunities(); 
+
+  // 🛑 ФІКС: Миттєво оновлюємо стрічку після підписки/відписки
+setTimeout(() => {
+    const activeSort = document.querySelector(".sort-btn.active");
+    if (activeSort) activeSort.click();
+  }, 10);
 }
-// Функція, яка бере ім'я і завжди повертає для нього один і той самий колір
-export function getUserColor(name) {
-  if (!name) return avatarColors[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % avatarColors.length;
-  return avatarColors[index];
-}
-function handleSearch(q) {
+
+//
+
+export function handleSearch(q) {
   const f = q.trim()
     ? posts.filter(
         (p) =>
@@ -142,24 +153,38 @@ export function filterByCategory(cat) {
   renderFeed(posts.filter((p) => p.sub === cat));
 }
 export function setSort(btn, type) {
-  document
-    .querySelectorAll(".sort-btn")
-    .forEach((b) => b.classList.remove("active"));
-  btn.classList.add("active");
+  const btnContainer = btn.parentElement;
+  if (btnContainer) {
+    btnContainer.querySelectorAll(".sort-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
 
-  // Якщо відкрита категорія — сортуємо тільки її пости, інакше сортуємо всі
-  const basePosts = currentCategory
-    ? posts.filter((p) => p.sub === currentCategory)
-    : [...posts];
+  const path = window.location.pathname;
+  const isHome = path.includes("index.html") || path === "/";
+  const user = getCurrentUser();
 
-  if (type === "hot") {
-    basePosts.sort((a, b) => b.comments - a.comments);
+  // 🛑 ФІКС 3: Завжди надійно витягуємо глобальні змінні
+  const cat = window.currentCategory;
+  const allPosts = window.posts || [];
+  let basePosts = [];
+
+  if (cat) {
+    basePosts = allPosts.filter((p) => p.sub === cat);
+  } else if (isHome && !path.includes("popular")) {
+    const joined = user?.joinedSubs || [];
+    basePosts = allPosts.filter((p) => joined.includes(p.sub));
+  } else {
+    basePosts = [...allPosts];
+  }
+
+  if (type === "best") {
+    basePosts.sort((a, b) => (b.votes + b.comments * 2) - (a.votes + a.comments * 2));
   } else if (type === "new") {
-    basePosts.sort((a, b) => b.timestamp - a.timestamp);
+    basePosts.sort((a, b) => new Date(b.time) - new Date(a.time));
   } else if (type === "top") {
     basePosts.sort((a, b) => b.votes - a.votes);
-  } else if (type === "best" || !type) {
-    basePosts.sort((a, b) => b.votes + b.comments - (a.votes + a.comments));
+  } else if (type === "hot") {
+    basePosts.sort((a, b) => b.comments - a.comments);
   }
 
   renderFeed(basePosts);
@@ -209,9 +234,12 @@ export function toggleJoin(btn) {
     btn.classList.remove("joined");
     btn.textContent = "Приєднатись";
   }
-
   updateStoredUser(user);
   renderSidebarCommunities(); // Перемальовуємо, щоб оновити список
+  setTimeout(() => {
+    const activeSort = document.querySelector(".sort-btn.active");
+    if (activeSort) activeSort.click();
+  }, 10);
 }
 export function openModal(id) {
   document.getElementById(id).classList.add("open");

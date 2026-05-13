@@ -4,27 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GOAT Forum — Популярне</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="globalLoader">
       <div class="loader-icon">🐐</div>
-      <h2
-        style="
-          font-family: var(--font-head);
-          margin-top: 16px;
-          color: var(--text);
-          font-size: 1.2rem;
-        "
-      >
-        Завантаження форуму...
-      </h2>
+      <h2 class="loader-title">Завантаження форуму...</h2>
     </div>
-    <!-- ═══════════ HEADER ═══════════ -->
+
     <header>
       <a class="logo" href="index.html">
         <div class="logo-icon">🐐</div>
@@ -32,43 +20,26 @@
       </a>
       <div class="search-bar">
         <span style="color: var(--muted)">🔍</span>
-        <input
-          type="text"
-          placeholder="Пошук по форуму…"
-          oninput="handleSearch(this.value)"
-        />
+        <input type="text" placeholder="Пошук по форуму…" oninput="handleSearch(this.value)" />
       </div>
       <div class="header-actions" id="headerActions"></div>
     </header>
-    <!-- ═══════════ END HEADER ═══════════ -->
 
     <div class="layout" id="mainLayout">
-      <!-- LEFT SIDEBAR -->
       <aside class="sidebar-left">
         <div class="sidebar-top-content">
           <div class="nav-section">
-            <a class="nav-item" href="index.html" id="nav-home"
-              ><span class="nav-icon">🏠</span>Головна</a
-            >
-            <a class="nav-item active" href="popular.html" id="nav-popular"
-              ><span class="nav-icon">🔥</span>Популярне</a
-            >
-            <a class="nav-item" href="categories.html" id="nav-cats"
-              ><span class="nav-icon">🗂️</span>Категорії</a
-            >
-            <a class="nav-item" href="contact.html" id="nav-contact"
-              ><span class="nav-icon">✉️</span>Зворотний зв'язок</a
-            >
+            <a class="nav-item" href="index.html" id="nav-home"><span class="nav-icon">🏠</span>Головна</a>
+            <a class="nav-item active" href="popular.html" id="nav-popular"><span class="nav-icon">🔥</span>Популярне</a>
+            <a class="nav-item" href="categories.html" id="nav-cats"><span class="nav-icon">🗂️</span>Категорії</a>
+            <a class="nav-item" href="contact.html" id="nav-contact"><span class="nav-icon">✉️</span>Зворотний зв'язок</a>
           </div>
-
           <div class="nav-divider"></div>
-
           <div class="nav-section">
             <div class="nav-section-title">Спільноти</div>
             <div id="sidebarCommunities"></div>
           </div>
         </div>
-
         <div class="sidebar-footer">
           <div class="nav-divider"></div>
           <nav class="footer-sidebar-links">
@@ -81,327 +52,133 @@
           </div>
         </div>
       </aside>
-      <!-- MAIN -->
+
       <main>
-        <div style="margin-bottom: 20px">
-          <h1
-            style="
-              font-family: var(--font-head);
-              font-size: 1.5rem;
-              font-weight: 700;
-              margin-bottom: 6px;
-            "
-          >
-            🔥 Популярне
-          </h1>
-          <p style="color: var(--muted); font-size: 14px">
-            Найпопулярніші пости за всі часи
-          </p>
+        <div class="page-header">
+          <h1 class="page-header-title">🔥 Популярне</h1>
+          <p class="page-header-subtitle">Найпопулярніші пости за всі часи</p>
         </div>
 
-        <!-- Топ пости — сортуються по votes спадаючи -->
-        <!-- Топ пости — сортуються по votes спадаючи -->
         <div id="page-home" class="page active">
           <div class="sort-bar" style="margin-bottom: 12px">
-            <button class="sort-btn active" onclick="setSort(this, 'top')">
-              📈 За голосами
-            </button>
-            <button class="sort-btn" onclick="setSort(this, 'hot')">
-              💬 За коментарями
-            </button>
-            <button class="sort-btn" onclick="setSort(this, 'new')">
-              ✨ Нові
-            </button>
+            <button class="sort-btn active" onclick="setSort(this, 'top')">📈 За голосами</button>
+            <button class="sort-btn" onclick="setSort(this, 'hot')">💬 За коментарями</button>
+            <button class="sort-btn" onclick="setSort(this, 'new')">✨ Нові</button>
           </div>
-
           <div id="postFeed"></div>
         </div>
 
         <div id="page-post" class="page"><div id="postViewContent"></div></div>
-        <div id="page-profile" class="page">
-          <div id="profileContent"></div>
-        </div>
+        <div id="page-profile" class="page"><div id="profileContent"></div></div>
       </main>
 
-      <!-- RIGHT SIDEBAR -->
       <aside class="sidebar-right">
         <div id="createPostWidget"></div>
-
         <div class="widget">
           <div class="widget-header">🏆 Топ категорії</div>
-          <div
-            class="widget-body"
-            style="padding: 8px 14px"
-            id="rightSidebarCommunities"
-          ></div>
+          <div class="widget-body" style="padding: 8px 14px" id="rightSidebarCommunities"></div>
         </div>
-
         <div class="widget">
           <div class="widget-header">Правила форуму</div>
           <div class="widget-body" style="padding: 8px 14px">
-            <div class="rule-item">
-              <span class="rule-num">1</span>Поважайте інших учасників
-            </div>
-            <div class="rule-item">
-              <span class="rule-num">2</span>Немає спаму або реклами
-            </div>
-            <div class="rule-item">
-              <span class="rule-num">3</span>Дотримуйтесь теми спільноти
-            </div>
-            <div class="rule-item">
-              <span class="rule-num">4</span>Перевіряйте джерела
-            </div>
-            <div class="rule-item">
-              <span class="rule-num">5</span>Використовуйте зрозумілі заголовки
-            </div>
+            <div class="rule-item"><span class="rule-num">1</span>Поважайте інших учасників</div>
+            <div class="rule-item"><span class="rule-num">2</span>Немає спаму або реклами</div>
+            <div class="rule-item"><span class="rule-num">3</span>Дотримуйтесь теми спільноти</div>
+            <div class="rule-item"><span class="rule-num">4</span>Перевіряйте джерела</div>
+            <div class="rule-item"><span class="rule-num">5</span>Використовуйте зрозумілі заголовки</div>
           </div>
         </div>
       </aside>
     </div>
 
-    <!-- MODALS -->
-    <div
-      class="overlay"
-      id="createPostOverlay"
-      onclick="closeIfOverlay(event, 'createPostOverlay')"
-    >
+    <div class="overlay" id="createPostOverlay" onclick="closeIfOverlay(event, 'createPostOverlay')">
       <div class="modal" style="max-width: 540px">
-        <button class="modal-close" onclick="closeModal('createPostOverlay')">
-          ✕
-        </button>
+        <button class="modal-close" onclick="closeModal('createPostOverlay')">✕</button>
         <h2>✏️ Новий пост</h2>
         <p>Опублікуйте щось цікаве для спільноти</p>
         <div class="form-field">
-          <label>Категорія</label
-          ><select id="postCategory"></select>
+          <label>Категорія</label>
+          <select id="postCategory" class="modal-input"></select>
         </div>
         <div class="form-field">
           <label>Заголовок</label>
-          <input
-            type="text"
-            id="postTitle"
-            placeholder="Введіть заголовок поста…"
-            maxlength="100"
-            oninput="
-              document.getElementById('titleCount').textContent =
-                this.value.length + ' / 100'
-            "
-          />
-          <div
-            style="
-              text-align: right;
-              font-size: 11px;
-              color: var(--muted);
-              margin-top: 4px;
-            "
-            id="titleCount"
-          >
-            0 / 100
-          </div>
+          <input type="text" id="postTitle" class="modal-input" placeholder="Введіть заголовок поста…" maxlength="100" oninput="document.getElementById('titleCount').textContent = this.value.length + ' / 100'" />
+          <div class="char-counter" id="titleCount">0 / 100</div>
         </div>
         <div class="form-field">
           <label>Текст (необов'язково)</label>
-          <textarea
-            id="postBody"
-            placeholder="Розкажіть детальніше…"
-            style="
-              width: 100%;
-              background: var(--bg);
-              border: 1px solid var(--border);
-              border-radius: 8px;
-              color: var(--text);
-              font-family: var(--font-body);
-              font-size: 14px;
-              padding: 10px;
-              resize: vertical;
-              min-height: 120px;
-              outline: none;
-            "
-            onfocus="this.style.borderColor = 'var(--blue)'"
-            onblur="this.style.borderColor = 'var(--border)'"
-          ></textarea>
+          <textarea id="postBody" class="modal-input" placeholder="Розкажіть детальніше…"></textarea>
         </div>
         <div class="form-field">
           <label>Зображення (необов'язково)</label>
-          <input
-            type="file"
-            id="postImage"
-            accept="image/*"
-            style="
-              width: 100%;
-              background: var(--bg);
-              border: 1px solid var(--border);
-              color: var(--text);
-              border-radius: 8px;
-              padding: 8px 12px;
-              font-size: 13px;
-              cursor: pointer;
-            "
-            onchange="previewImage(this)"
-          />
+          <input type="file" id="postImage" class="modal-input" accept="image/*" onchange="previewImage(this)" />
           <span class="field-hint">PNG, JPG, WEBP — до 5 МБ</span>
-          <img
-            id="imagePreview"
-            src=""
-            alt="preview"
-            style="
-              display: none;
-              width: 100%;
-              max-height: 200px;
-              object-fit: cover;
-              border-radius: 8px;
-              margin-top: 8px;
-            "
-          />
+          <img id="imagePreview" src="" alt="Попередній перегляд" class="image-preview-box" />
         </div>
-        <div style="display: flex; gap: 8px; justify-content: flex-end">
-          <button
-            class="btn btn-ghost"
-            style="border-radius: 8px"
-            onclick="closeModal('createPostOverlay')"
-          >
-            Скасувати
-          </button>
-          <button
-            class="btn btn-accent"
-            style="border-radius: 8px; padding: 8px 24px"
-            onclick="submitPost()"
-          >
-            Опублікувати
-          </button>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
+          <button class="btn btn-ghost" style="border-radius: 8px" onclick="closeModal('createPostOverlay')">Скасувати</button>
+          <button class="btn btn-accent" style="border-radius: 8px; padding: 8px 24px" onclick="submitPost()">Опублікувати</button>
         </div>
       </div>
     </div>
-    <div
-      class="overlay"
-      id="deleteConfirmOverlay"
-      onclick="closeIfOverlay(event, 'deleteConfirmOverlay')"
-    >
-      <div class="modal" style="max-width: 380px; text-align: center">
-        <div style="font-size: 48px; margin-bottom: 12px">🗑️</div>
+
+    <div class="overlay" id="deleteConfirmOverlay" onclick="closeIfOverlay(event, 'deleteConfirmOverlay')">
+      <div class="modal modal-center">
+        <div class="modal-icon-large">🗑️</div>
         <h2 style="margin-bottom: 8px">Видалити пост?</h2>
-        <p style="margin-bottom: 24px">Цю дію неможливо скасувати.</p>
-        <div style="display: flex; gap: 10px; justify-content: center">
-          <button
-            class="btn btn-ghost"
-            style="border-radius: 8px; padding: 9px 24px"
-            onclick="closeModal('deleteConfirmOverlay')"
-          >
-            Скасувати
-          </button>
-          <button
-            class="btn btn-accent"
-            style="border-radius: 8px; padding: 9px 24px; background: #c0392b"
-            onclick="deletePost()"
-          >
-            Так, видалити
-          </button>
+        <p style="margin-bottom: 24px">Цю дію неможливо скасувати. Пост буде видалено назавжди.</p>
+        <div class="modal-buttons-row">
+          <button class="btn btn-ghost" style="border-radius: 8px; padding: 9px 24px" onclick="closeModal('deleteConfirmOverlay')">Скасувати</button>
+          <button class="btn btn-accent" style="border-radius: 8px; padding: 9px 24px; background: #c0392b" onclick="deletePost()">Так, видалити</button>
         </div>
       </div>
     </div>
-    <div
-      class="overlay"
-      id="loginOverlay"
-      onclick="closeIfOverlay(event, 'loginOverlay')"
-    >
+
+    <div class="overlay" id="loginOverlay" onclick="closeIfOverlay(event, 'loginOverlay')">
       <div class="modal">
-        <button class="modal-close" onclick="closeModal('loginOverlay')">
-          ✕
-        </button>
+        <button class="modal-close" onclick="closeModal('loginOverlay')">✕</button>
         <h2>Ласкаво просимо!</h2>
         <p>Увійдіть у свій акаунт</p>
         <div class="auth-error" id="loginError"></div>
         <div class="form-field">
-          <label>Email</label
-          ><input
-            type="email"
-            id="loginEmail"
-            placeholder="you@example.com"
-            required
-          /><span class="field-hint">Формат: name@example.com</span>
+          <label>Email</label>
+          <input type="email" id="loginEmail" class="modal-input" placeholder="you@example.com" required title="Введіть коректний email" />
+          <span class="field-hint">Формат: name@example.com</span>
         </div>
         <div class="form-field">
-          <label>Пароль</label
-          ><input
-            type="password"
-            id="loginPassword"
-            placeholder="Ваш пароль"
-            required
-          />
+          <label>Пароль</label>
+          <input type="password" id="loginPassword" class="modal-input" placeholder="Ваш пароль" required />
         </div>
-        <button
-          class="btn btn-accent"
-          style="
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-          "
-          onclick="doSignin()"
-        >
-          Увійти
-        </button>
+        <button class="btn btn-accent btn-full" onclick="doSignin()">Увійти</button>
         <div class="modal-divider">або</div>
         <div class="modal-footer">
           Немає акаунту? <a onclick="switchToRegister()">Зареєструватись</a>
         </div>
       </div>
     </div>
-    <div
-      class="overlay"
-      id="registerOverlay"
-      onclick="closeIfOverlay(event, 'registerOverlay')"
-    >
+
+    <div class="overlay" id="registerOverlay" onclick="closeIfOverlay(event, 'registerOverlay')">
       <div class="modal">
-        <button class="modal-close" onclick="closeModal('registerOverlay')">
-          ✕
-        </button>
+        <button class="modal-close" onclick="closeModal('registerOverlay')">✕</button>
         <h2>Реєстрація</h2>
         <p>Приєднуйся до GOAT Forum</p>
         <div class="auth-error" id="registerError"></div>
         <div class="form-field">
-          <label>Ім'я</label
-          ><input
-            type="text"
-            id="regName"
-            placeholder="Ваше ім'я"
-            required
-            minlength="2"
-          /><span class="field-hint">Мінімум 2 символи</span>
+          <label>Ім'я</label>
+          <input type="text" id="regName" class="modal-input" placeholder="Ваше ім'я" required minlength="2" title="Мінімум 2 символи" />
+          <span class="field-hint">Мінімум 2 символи</span>
         </div>
         <div class="form-field">
-          <label>Email</label
-          ><input
-            type="email"
-            id="regEmail"
-            placeholder="you@example.com"
-            required
-          /><span class="field-hint">Формат: name@example.com</span>
+          <label>Email</label>
+          <input type="email" id="regEmail" class="modal-input" placeholder="you@example.com" required title="Введіть коректний email" />
+          <span class="field-hint">Формат: name@example.com</span>
         </div>
         <div class="form-field">
-          <label>Пароль</label
-          ><input
-            type="password"
-            id="regPassword"
-            placeholder="Мінімум 8 символів"
-            required
-            minlength="8"
-          /><span class="field-hint">Мінімум 8 символів</span>
+          <label>Пароль</label>
+          <input type="password" id="regPassword" class="modal-input" placeholder="Мінімум 8 символів" required minlength="8" title="Мінімум 8 символів" />
+          <span class="field-hint">Мінімум 8 символів</span>
         </div>
-        <button
-          class="btn btn-accent"
-          style="
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-          "
-          onclick="doSignup()"
-        >
-          Створити акаунт
-        </button>
+        <button class="btn btn-accent btn-full" onclick="doSignup()">Створити акаунт</button>
         <div class="modal-footer" style="margin-top: 14px">
           Вже є акаунт? <a onclick="switchToLogin()">Увійти</a>
         </div>
@@ -410,17 +187,5 @@
 
     <div class="toast" id="toast"></div>
     <script type="module" src="/app.js"></script>
-    <script>
-      document
-        .querySelectorAll("#currentYear,.footer-year")
-        .forEach((el) => (el.textContent = new Date().getFullYear()));
-      // Auto-sort by votes on this page
-      document.addEventListener("DOMContentLoaded", () => {
-        if (typeof setSort === "function") {
-          const btn = document.querySelector(".sort-btn.active");
-          if (btn) setSort(btn, "top");
-        }
-      });
-    </script>
   </body>
 </html>

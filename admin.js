@@ -215,23 +215,61 @@ export async function deleteCatConfirmed() {
 }
 
 export async function submitContactForm() {
+  const btn = document.getElementById("contactSubmitBtn");
   const name = document.getElementById("contactName").value.trim();
   const email = document.getElementById("contactEmail").value.trim();
   const message = document.getElementById("contactMessage").value.trim();
+  const subject = document.getElementById("contactSubject")?.value || "general";
 
-  if (!name || !email || !message) {
-    showToast("Будь ласка, заповніть всі поля", "error");
+  // Валідація
+  if (!name || name.length < 2) {
+    showToast("Введіть ім'я (мінімум 2 символи)", "error");
+    return;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast("Введіть коректний email", "error");
+    return;
+  }
+  if (!message || message.length < 10) {
+    showToast("Повідомлення має містити щонайменше 10 символів", "error");
     return;
   }
 
+  // Змінюємо стан кнопки
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Надсилання…";
+  }
+
   const result = await submitContactDb({ name, email, message });
+
   if (result.success) {
     showToast("✅ Повідомлення надіслано!", "success");
+    
+    // Очищаємо поля
     document.getElementById("contactName").value = "";
     document.getElementById("contactEmail").value = "";
     document.getElementById("contactMessage").value = "";
+    
+    // Показуємо зелений блок успіху
+    const successMsg = document.getElementById("contactSuccess");
+    if (successMsg) successMsg.classList.add("show");
+
+    // Відновлюємо кнопку
+    if (btn) {
+      btn.textContent = "✅ Надіслано!";
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = "Надіслати повідомлення";
+        if (successMsg) successMsg.classList.remove("show");
+      }, 3000);
+    }
   } else {
     showToast("Помилка при надсиланні", "error");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Надіслати повідомлення";
+    }
   }
 }
 
