@@ -3,6 +3,7 @@
 // ════════════════════════════════════════════
 import { isAdmin, getCurrentUser } from "./auth.js";
 import { showToast, openModal, closeModal } from "./ui.js";
+import { supabase,fetchUsers, fetchContactsDb, updateContactStatusDb } from "./api.js";
 export const ITEMS_PER_PAGE = 15; 
 export let adminPostsPage = 1;
 export let adminMessagesPage = 1;
@@ -461,24 +462,24 @@ export function renderAdminPosts() {
   tb.innerHTML = paginated
     .map(
       (p) => `
-   <tr style="border-bottom:1px solid var(--border)">
+ <tr style="border-bottom:1px solid var(--border)">
       <td style="padding:12px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;padding-bottom:14px" title="${p.title.replace(/"/g, "&quot;")}">
-        <a href="#post-${p.id}" onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display='';" style="color:var(--text); text-decoration:none; transition:color 0.2s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'"><b>${p.title}</b></a>
+        <a href="index.html#post-${p.id}" style="color:var(--text); text-decoration:none; transition:color 0.2s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text)'"><b>${p.title}</b></a>
       </td>
       <td style="padding:12px">
-        <span onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; filterByCategory('${p.sub}')" style="background:${p.subColor}20; color:${p.subColor}; padding:4px 8px; border-radius:12px; font-size:12px; white-space:nowrap; cursor:pointer">${p.emoji} ${p.sub}</span>
+        <span onclick="window.location.href='index.html#category-${encodeURIComponent(p.sub)}'" style="background:${p.subColor}20; color:${p.subColor}; padding:4px 8px; border-radius:12px; font-size:12px; white-space:nowrap; cursor:pointer">${p.emoji} ${p.sub}</span>
       </td>
       <td style="padding:12px;color:var(--text)">${p.authorName}</td>
       <td style="padding:12px;font-weight:600;color:#ff4500">▲ ${p.votes}</td>
       <td style="padding:12px;color:var(--muted)">💬 ${p.comments}</td>
       <td style="padding:12px">
         <div class="table-actions" style="display:flex;gap:6px">
-          <button class="tbl-btn primary" onclick="document.getElementById('adminPanel').style.display='none'; document.getElementById('mainLayout').style.display=''; editPost(${p.id})" title="Редагувати пост">✏️</button>
+          <button class="tbl-btn primary" onclick="editPost(${p.id})" title="Редагувати пост">✏️</button>
           <button class="tbl-btn danger" onclick="confirmDeletePost(${p.id})" title="Видалити пост">🗑️</button>
         </div>
       </td>
     </tr>
-  `,
+  `
     )
     .join("");
 

@@ -1,7 +1,10 @@
 // ════════════════════════════════════════════
 //  PAGES — openPost, setPage, профіль, роутер
 // ════════════════════════════════════════════
-import { isAdmin, getCurrentUser } from "./auth.js";
+import { isAdmin, isAuthenticated, getCurrentUser,getAuthorName  } from "./auth.js";
+import { filterByCategory, fmtNum, linkify } from "./ui.js"
+import { fetchUsers, fetchCommentsDb, fetchContactsDb } from "./api.js";
+import { renderComment } from "./render.js";
 export async function openPost(rawId) {
   // 🛡️ МАГІЧНИЙ ЩИТ
   const pv = document.getElementById("postViewContent");

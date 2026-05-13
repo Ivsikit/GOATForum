@@ -11,7 +11,7 @@ import { renderHeader, renderFeed, renderSidebarCommunities } from "./render.js"
 import { getCurrentUser, setCurrentUser, doSignin, doSignup, doSignout, requireAuth } from "./auth.js";
 import { submitPost, editPost, saveEditPost, confirmDeletePost, deletePost, castVote, savePost, postComment,previewImage } from "./posts.js";
 import { openAdminPanel, switchAdminTab, changeUserRole, deleteUser, saveCat, deleteCatConfirmed, startDeleteCat, startEditCat, showCatForm, hideCatForm,submitContactForm,deleteMessage, changeMessageStatus, filterAdminUsers, setAdminUsersPage, setAdminPostsPage, setAdminMessagesPage } from "./admin.js";
-import { showToast, openModal, closeModal, closeIfOverlay, shareProfile,toggleDropdown, closeDropdown,sharePost,toggleJoinCategory } from "./ui.js";
+import { showToast, openModal, closeModal, closeIfOverlay, shareProfile,toggleDropdown, closeDropdown,sharePost,toggleJoinCategory, filterByCategory } from "./ui.js";
 
 // ════════════════════════════════════════════
 //  ГЛОБАЛЬНИЙ СТАН (Доступний у всіх файлах)
@@ -29,7 +29,7 @@ window.currentCategory = null;
 //  ІНІЦІАЛІЗАЦІЯ ПРОЄКТУ
 // ════════════════════════════════════════════
 async function initApp() {
-  console.log("🚀 GOAT Forum ініціалізація...");
+  console.log("GOAT Forum ініціалізація...");
   
   // 1. Завантажуємо категорії та пости з бази
   await loadData(); 
@@ -120,3 +120,17 @@ window.openUserProfile = openUserProfile;
 window.categoryConfig = categoryConfig;
 window.posts = posts;
 window.renderSidebarCommunities = renderSidebarCommunities;
+window.changeUserRole = changeUserRole;
+window.deleteUser = deleteUser;
+window.filterByCategory = filterByCategory;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('✅ Охоронець (Service Worker) успішно зареєстрований!');
+      })
+      .catch((error) => {
+        console.log('❌ Помилка реєстрації Service Worker:', error);
+      });
+  });
+}

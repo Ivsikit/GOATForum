@@ -1,7 +1,8 @@
 // ════════════════════════════════════════════
 //  UI — dropdown, пошук, сортування, модалки, toast, утиліти
 // ════════════════════════════════════════════
-
+import {loginUserDb } from "./api.js";
+let toastTimer;
 export function toggleDropdown() {
   const dd = document.getElementById("avatarDropdown");
   if (dd) dd.classList.toggle("open");

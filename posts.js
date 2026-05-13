@@ -1,7 +1,9 @@
 // ════════════════════════════════════════════
 //  POSTS — CRUD, коментарі, голосування, зображення
 // ════════════════════════════════════════════
-
+import {deletePostDb } from "./api.js";
+import { loadData } from "./data.js";
+let _pendingDeleteId = null;
 export async function submitPost() {
   const title = document.getElementById("postTitle").value.trim();
   const body = document.getElementById("postBody").value.trim();
