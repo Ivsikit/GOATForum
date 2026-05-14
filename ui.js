@@ -288,3 +288,12 @@ document.addEventListener("keydown", (e) => {
 
 const yearElement = document.getElementById("currentYear");
 if (yearElement) yearElement.textContent = new Date().getFullYear();
+
+export function togglePassword(inputId, checkbox) {
+  const input = document.getElementById(inputId);
+  if (checkbox.checked) {
+    input.type = "text";     // Показуємо пароль
+  } else {
+    input.type = "password"; // Ховаємо пароль
+  }
+}

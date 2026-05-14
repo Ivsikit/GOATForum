@@ -144,7 +144,11 @@
         </div>
         <div class="form-field">
           <label>Пароль</label>
-          <input type="password" id="loginPassword" class="modal-input" placeholder="Ваш пароль" required />
+          <input type="password" id="loginPassword" class="input" placeholder="Пароль" required style="width: 100%;" />
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+  <input type="checkbox" id="showLoginPwd" onclick="togglePassword('loginPassword', this)" style="cursor: pointer; width: 16px; height: 16px;">
+  <label for="showLoginPwd" style="font-size: 14px; color: var(--muted); cursor: pointer; user-select: none;">Показати пароль</label>
+</div>
         </div>
         <button class="btn btn-accent btn-full" onclick="doSignin()">Увійти</button>
         <div class="modal-divider">або</div>
@@ -171,9 +175,11 @@
           <span class="field-hint">Формат: name@example.com</span>
         </div>
         <div class="form-field">
-          <label>Пароль</label>
-          <input type="password" id="regPassword" class="modal-input" placeholder="Мінімум 8 символів" required minlength="8" title="Мінімум 8 символів" />
-          <span class="field-hint">Мінімум 8 символів</span>
+          <input type="password" id="regPassword" class="input" placeholder="Пароль (мін. 8 символів)" required style="width: 100%;" />
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+  <input type="checkbox" id="showRegPwd" onclick="togglePassword('regPassword', this)" style="cursor: pointer; width: 16px; height: 16px;">
+  <label for="showRegPwd" style="font-size: 14px; color: var(--muted); cursor: pointer; user-select: none;">Показати пароль</label>
+</div>
         </div>
         <button class="btn btn-accent btn-full" onclick="doSignup()">Створити акаунт</button>
         <div class="modal-footer" style="margin-top: 14px">

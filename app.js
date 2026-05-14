@@ -11,7 +11,7 @@ import { renderHeader, renderFeed, renderSidebarCommunities, renderCategorySearc
 import { getCurrentUser, updateStoredUser, doSignin, doSignup, doSignout, requireAuth, isAuthenticated, initAuthListener}from "./auth.js";
 import { submitPost, editPost, saveEditPost, confirmDeletePost, deletePost, castVote, savePost, postComment,previewImage } from "./posts.js";
 import { openAdminPanel, switchAdminTab, changeUserRole, deleteUser, saveCat, deleteCatConfirmed, startDeleteCat, startEditCat, showCatForm, hideCatForm,submitContactForm,deleteMessage, changeMessageStatus, filterAdminUsers, setAdminUsersPage, setAdminPostsPage, setAdminMessagesPage } from "./admin.js";
-import { showToast, openModal, closeModal, closeIfOverlay, shareProfile, toggleDropdown, closeDropdown,sharePost, filterByCategory, setSort, handleSearch, toggleJoin, toggleJoinCategory} from "./ui.js";
+import { showToast, openModal, closeModal, closeIfOverlay, shareProfile, toggleDropdown, closeDropdown,sharePost, filterByCategory, setSort, handleSearch, toggleJoin, toggleJoinCategory, togglePassword} from "./ui.js";
 
 // ════════════════════════════════════════════
 //  ГЛОБАЛЬНИЙ СТАН (Доступний у всіх файлах)
@@ -91,7 +91,7 @@ window.renderProfile = renderProfile;
 window.goProfile = goProfile;
 window.handleSearch = handleSearch;
 window.toggleJoin = toggleJoin;
-
+window.togglePassword = togglePassword;
 // ════════════════════════════════════════════
 //  ІНІЦІАЛІЗАЦІЯ ПРОЄКТУ
 // ════════════════════════════════════════════
