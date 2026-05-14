@@ -8,7 +8,7 @@ import { supabase } from "./api.js";
 import { loadData } from "./data.js";
 import { setPage, openPost, handleRoute, openUserProfile, renderProfile, goProfile } from "./pages.js";
 import { renderHeader, renderFeed, renderSidebarCommunities, renderCategorySearch } from "./render.js";
-import { getCurrentUser, setCurrentUser, doSignin, doSignup, doSignout, requireAuth } from "./auth.js";
+import { getCurrentUser, updateStoredUser, doSignin, doSignup, doSignout, requireAuth, isAuthenticated, initAuthListener}from "./auth.js";
 import { submitPost, editPost, saveEditPost, confirmDeletePost, deletePost, castVote, savePost, postComment,previewImage } from "./posts.js";
 import { openAdminPanel, switchAdminTab, changeUserRole, deleteUser, saveCat, deleteCatConfirmed, startDeleteCat, startEditCat, showCatForm, hideCatForm,submitContactForm,deleteMessage, changeMessageStatus, filterAdminUsers, setAdminUsersPage, setAdminPostsPage, setAdminMessagesPage } from "./admin.js";
 import { showToast, openModal, closeModal, closeIfOverlay, shareProfile, toggleDropdown, closeDropdown,sharePost, filterByCategory, setSort, handleSearch, toggleJoin, toggleJoinCategory} from "./ui.js";
@@ -25,47 +25,7 @@ window.adminMessagesCache = [];
 window.currentPostId = null;
 window.currentCategory = null;
 
-
-// ════════════════════════════════════════════
-//  ІНІЦІАЛІЗАЦІЯ ПРОЄКТУ
-// ════════════════════════════════════════════
-async function initApp() {
-  console.log("GOAT Forum ініціалізація...");
-  
-  // 1. Завантажуємо категорії та пости з бази
-  await loadData(); 
-  
-  const catSearchInput = document.getElementById("catSearchInput");
-  if (catSearchInput) {
-    renderCategorySearch(); // Малюємо сітку при завантаженні
-    catSearchInput.addEventListener("input", renderCategorySearch); // Слухаємо введення тексту
-  }
-  
-  // 2. Малюємо шапку (вхід/профіль)
-  renderHeader();
-
-  // 3. Ховаємо лоадер, якщо він є
-  const loader = document.getElementById("globalLoader");
-  if (loader) loader.classList.add("hidden");
-
-  // 4. Перевіряємо адресу (роутинг)
-  const path = window.location.pathname.toLowerCase();
-  
-  // Якщо ми в адмінці без хешу - ставимо дашборд
-  if (path.includes("admin.html") && !window.location.hash) {
-    window.location.hash = "#admin-dashboard";
-  }
-
-  // 🛑 ОСЬ ВІДНОВЛЕНИЙ БЛОК, ЯКИЙ ТИ ВИПАДКОВО ВИДАЛИВ:
-  //
-  // 🛑 ОСЬ ЯК ЧИСТО ТЕПЕР ВИГЛЯДАЄ РОУТИНГ В initApp():
-  if (window.location.hash) {
-    await handleRoute();
-  } else {
-    // Вся магія тепер прихована тут!
-    setPage("home");
-  }
-}
+window.addEventListener("hashchange", handleRoute);
 
 // Запуск при завантаженні сторінки
 initApp();
@@ -122,8 +82,6 @@ window.setAdminUsersPage = setAdminUsersPage;
 window.setAdminPostsPage = setAdminPostsPage;
 window.setAdminMessagesPage = setAdminMessagesPage;
 window.openUserProfile = openUserProfile;
-window.categoryConfig = categoryConfig;
-window.posts = posts;
 window.renderSidebarCommunities = renderSidebarCommunities;
 window.changeUserRole = changeUserRole;
 window.deleteUser = deleteUser;
@@ -133,14 +91,50 @@ window.renderProfile = renderProfile;
 window.goProfile = goProfile;
 window.handleSearch = handleSearch;
 window.toggleJoin = toggleJoin;
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('✅ Охоронець (Service Worker) успішно зареєстрований!');
-      })
-      .catch((error) => {
-        console.log('❌ Помилка реєстрації Service Worker:', error);
-      });
-  });
+
+// ════════════════════════════════════════════
+//  ІНІЦІАЛІЗАЦІЯ ПРОЄКТУ
+// ════════════════════════════════════════════
+//
+async function initApp() {
+  console.log("🚀 Запуск завантаження бази даних...");
+  
+  try {
+    // База завантажиться лише ОДИН раз
+    await loadData(); 
+    console.log("✅ Дані завантажено!");
+
+    const catSearchInput = document.getElementById("catSearchInput");
+    if (catSearchInput) {
+      renderCategorySearch();
+      catSearchInput.addEventListener("input", renderCategorySearch);
+    }
+    renderHeader();
+  } catch (err) {
+    console.error("❌ Помилка ініціалізації:", err);
+  } finally {
+    const loader = document.getElementById("globalLoader");
+    if (loader) loader.classList.add("hidden");
+  }
+
+  // Роутинг
+  if (window.location.hash) {
+    await handleRoute();
+  } else {
+    setPage("home");
+  }
 }
+
+// 🛑 ФІКС 3: Ідеальний контроль запуску!
+initAuthListener(
+  (user) => {
+    // Ця частина малює шапку при кожній зміні юзера (вхід/вихід)
+    renderHeader();
+    renderSidebarCommunities();
+  },
+  () => {
+    // Ця частина запускає сайт ТІЛЬКИ ОДИН РАЗ, коли Supabase повністю готовий!
+    initApp();
+    window.addEventListener("hashchange", handleRoute);
+  }
+);

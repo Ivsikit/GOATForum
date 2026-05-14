@@ -6,7 +6,6 @@ import { filterByCategory, fmtNum, linkify, getUserColor, sharePost, shareProfil
 import { fetchUsers, fetchCommentsDb, fetchContactsDb, fetchUserCommentsDb } from "./api.js";
 import { renderComment, renderFeed, postCard } from "./render.js";
 import { postComment, castVote, savePost, editPost, confirmDeletePost } from "./posts.js";
-import { openAdminPanel, switchAdminTab } from "./admin.js";
 import { getAuthorName } from "./data.js";
 export async function openPost(rawId) {
   // 🛡️ МАГІЧНИЙ ЩИТ
@@ -118,8 +117,8 @@ export function setPage(name) {
 
   if (name === "home") {
     window.history.replaceState(null, null, window.location.pathname);
-    currentPostId = null;
-    currentCategory = null;
+    window.currentPostId = null;
+    window.currentCategory = null;
 
     // 🛑 ГЕНІАЛЬНИЙ ФІКС: Замість складних фільтрів просто "клікаємо" активну кнопку сортування.
     // Вона сама перевірить: чи ми на Головній, чи в Популярному, і правильно все відмалює!
@@ -241,8 +240,7 @@ export async function renderProfile(tab) {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost" style="border-radius:8px" onclick="shareProfile()">🔗 Поділитись</button>
-          ${isAdmin() && isMe ? `<button class="btn btn-admin" style="border-radius:8px" onclick="openAdminPanel()">⚙️ Адмін панель</button>` : ""}
-        </div>
+         ${isAdmin() && isMe ? `<button class="btn btn-admin" style="border-radius:8px" onclick="import('./admin.js').then(m=>m.openAdminPanel())">⚙️ Адмін панель</button>` : ""}
       </div>
     </div>
     
@@ -334,7 +332,7 @@ export async function handleRoute() {
     } else {
       filterByCategory(cat);
     }
-  } else if (hash.startsWith("#admin")) {
+} else if (hash.startsWith("#admin")) {
     const tab = hash.replace("#admin-", "") || "dashboard";
     if (isAdmin()) {
       if (!path.includes("admin.html")) {
@@ -344,12 +342,14 @@ export async function handleRoute() {
       const adminPanel = document.getElementById("adminPanel");
       if (adminPanel) {
         adminPanel.style.display = "block";
-        switchAdminTab(tab);
+        // 🛑 ДИНАМІЧНИЙ ІМПОРТ
+        import('./admin.js').then(({ switchAdminTab }) => switchAdminTab(tab));
       }
     } else {
       window.location.href = "index.html";
     }
   } else {
+    // Якщо хеш порожній або невідомий
     if (
       !path.includes("popular") &&
       !path.includes("categor") &&

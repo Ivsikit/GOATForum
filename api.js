@@ -7,19 +7,24 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 2. Функція: Отримати всі категорії
 export async function fetchCategories() {
-  const { data, error } = await supabase.from("categories").select("*");
-  if (error) console.error("Помилка категорій:", error);
-  return data || [];
+  console.log("📡 [API] Надсилаємо запит до таблиці categories...");
+  const response = await supabase.from("categories").select("*");
+  console.log("📡 [API] Відповідь categories отримано:", response);
+  
+  if (response.error) console.error("Помилка категорій:", response.error);
+  return response.data || [];
 }
-
 // 3. Функція: Отримати всі пости
 export async function fetchPosts() {
-  const { data, error } = await supabase
+  console.log("📡 [API] Надсилаємо запит до таблиці posts...");
+  const response = await supabase
     .from("posts")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error) console.error("Помилка постів:", error);
-  return data || [];
+  console.log("📡 [API] Відповідь posts отримано:", response);
+  
+  if (response.error) console.error("Помилка постів:", response.error);
+  return response.data || [];
 }
 
 // 4. Функція: Створити новий пост

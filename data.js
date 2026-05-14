@@ -22,11 +22,17 @@ export function saveCategories(obj) {
 //  SUPABASE СИНХРОНІЗАЦІЯ
 // ════════════════════════════════════════════
 
+//
 export async function loadData() {
+  console.log("🛠️ [DATA] loadData() стартувала!");
+
+  console.log("🛠️ [DATA] Чекаємо на fetchCategories...");
   const catData = await fetchCategories();
-  categoryConfig = {};
+  console.log("🛠️ [DATA] Категорії успішно завантажено. Кількість:", catData.length);
+
+  window.categoryConfig = {};
   catData.forEach((c) => {
-    categoryConfig[c.name] = {
+    window.categoryConfig[c.name] = {
       emoji: c.emoji,
       color: c.color,
       desc: c.description,
@@ -34,9 +40,12 @@ export async function loadData() {
     };
   });
 
+  console.log("🛠️ [DATA] Чекаємо на fetchPosts...");
   const postData = await fetchPosts();
-  posts = postData.map((p) => {
-    const cat = categoryConfig[p.sub] || {
+  console.log("🛠️ [DATA] Пости успішно завантажено. Кількість:", postData.length);
+
+  window.posts = postData.map((p) => {
+    const cat = window.categoryConfig[p.sub] || {
       emoji: "📝",
       color: "#ff4500",
       flair: ["Пост", "flair-tech"],
@@ -57,14 +66,9 @@ export async function loadData() {
       time: new Date(p.created_at).toLocaleString("uk-UA"),
       edited: p.is_edited,
       image_url: p.image_url || null,
-      timestamp: new Date(p.created_at).getTime(), // <-- Наш маркер для точного сортування
+      timestamp: new Date(p.created_at).getTime(),
     };
   });
+  
+  console.log("🛠️ [DATA] loadData() повністю завершила роботу!");
 }
-
-// ════════════════════════════════════════════
-//  ПОСТИ (CREATE / EDIT / DELETE)
-// ════════════════════════════════════════════
-// ════════════════════════════════════════════
-//  ПОСТИ (CREATE / EDIT / DELETE)
-// ════════════════════════════════════════════

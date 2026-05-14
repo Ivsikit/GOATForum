@@ -6,7 +6,7 @@ import { loadData } from "./data.js";
 import { requireAuth, getCurrentUser, updateStoredUser} from "./auth.js";
 import { openModal, closeModal, closeIfOverlay, showToast } from "./ui.js";
 import { renderHeader, renderFeed } from "./render.js";
-import { openPost, setPage, renderProfile } from "./pages.js";
+import { openPost, setPage} from "./pages.js";
 let _pendingDeleteId = null;
 export async function submitPost() {
   const title = document.getElementById("postTitle").value.trim();
@@ -301,11 +301,13 @@ export async function savePost(id, btn) {
   updateStoredUser(user);
 
   // Якщо ми в профілі на вкладці збереженого — перемальовуємо список
+ // Якщо ми в профілі на вкладці збереженого — перемальовуємо список
   if (
     document.getElementById("page-profile")?.classList.contains("active") &&
-    profileTab === "saved"
+    window.profileTab === "saved"
   ) {
-    renderProfile("saved");
+    // 🛑 ДИНАМІЧНИЙ ІМПОРТ
+    import("./pages.js").then(({ renderProfile }) => renderProfile("saved"));
   }
 }
 

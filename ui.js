@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════
 //  UI — dropdown, пошук, сортування, модалки, toast, утиліти
 // ════════════════════════════════════════════
-import { getCurrentUser, updateStoredUser, requireAuth, doSignin, doSignup } from "./auth.js";
+import { getCurrentUser, updateStoredUser, requireAuth} from "./auth.js";
 
 
 import { renderSidebarCommunities, renderHeader, renderFeed } from "./render.js";
@@ -98,6 +98,7 @@ export function toggleJoinCategory(cat, btn) {
   }
 
   updateStoredUser(user);
+  import("./auth.js").then(m => m.syncUserSubs(user.joinedSubs));
   renderSidebarCommunities(); 
 
   // 🛑 ФІКС: Миттєво оновлюємо стрічку після підписки/відписки
@@ -235,6 +236,7 @@ export function toggleJoin(btn) {
     btn.textContent = "Приєднатись";
   }
   updateStoredUser(user);
+  import("./auth.js").then(m => m.syncUserSubs(user.joinedSubs));
   renderSidebarCommunities(); // Перемальовуємо, щоб оновити список
   setTimeout(() => {
     const activeSort = document.querySelector(".sort-btn.active");
@@ -270,10 +272,11 @@ export function showToast(msg, type = "") {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    if (document.getElementById("loginOverlay").classList.contains("open"))
-      doSignin();
-    if (document.getElementById("registerOverlay").classList.contains("open"))
-      doSignup();
+    // 🛑 ДИНАМІЧНИЙ ІМПОРТ
+    if (document.getElementById("loginOverlay")?.classList.contains("open"))
+      import("./auth.js").then(({ doSignin }) => doSignin());
+    if (document.getElementById("registerOverlay")?.classList.contains("open"))
+      import("./auth.js").then(({ doSignup }) => doSignup());
   }
   if (e.key === "Escape") {
     closeModal("loginOverlay");
