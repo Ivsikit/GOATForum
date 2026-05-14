@@ -138,3 +138,15 @@ initAuthListener(
     window.addEventListener("hashchange", handleRoute);
   }
 );
+if ('serviceWorker' in navigator) {
+  // Чекаємо, поки сторінка і база повністю завантажаться
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('🛡️ Охоронець (SW) успішно заступив на зміну!', registration.scope);
+      })
+      .catch((err) => {
+        console.error('❌ Помилка найму Охоронця (SW):', err);
+      });
+  });
+}
