@@ -90,66 +90,93 @@ export function renderHeader() {
   }
 }
 
-export function renderFeed(data) {
-  const feedContainer = document.getElementById("postFeed");
-  // 🛡️ МАГІЧНИЙ ЩИТ: якщо блоку немає, просто виходимо без помилок
-  if (!feedContainer) return;
+//
 
-  const list = data || posts;
-  let html = "";
+// ── Глобальний стан для пагінації ──────────────────────────────
+let feedState = { 
+  filtered: [],       // Пости, які зараз треба показати (з урахуванням сортування)
+  displayedCount: 0,  // Скільки вже відмалювали
+  chunk: 3,           // По скільки постів підвантажувати за раз
+  observer: null      // Наш "радар" для скролу
+};
 
-  if (currentCategory && categoryConfig[currentCategory]) {
-    const cat = categoryConfig[currentCategory];
-    const user = getCurrentUser();
-    const isJoined = user?.joinedSubs?.includes(currentCategory);
+// ── Головна функція стрічки ────────────────────────────────────
+// Приймає масив постів. За замовчуванням бере всі з window.posts
+export function renderFeed(postsToRender = window.posts) {
+  const pf = document.getElementById("postFeed");
+  if (!pf) return;
 
-    html += `
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; display:flex; gap:16px; align-items:center; animation: fadeIn 0.3s ease both;">
-      <div style="width:64px; height:64px; border-radius:50%; background:${cat.color}20; display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0">
-        ${cat.emoji}
-      </div>
-      <div style="flex:1">
-        <h1 style="font-family:var(--font-head); font-size:1.5rem; margin-bottom:4px; margin-top:0">${currentCategory}</h1>
-        <div style="color:var(--muted); font-size:13px">${cat.desc || "Спільнота за інтересами"} • ${list.length} постів</div>
-      </div>
-      <div>
-        <button class="btn ${isJoined ? "btn-ghost joined" : "btn-accent"}" style="border-radius:20px; padding:8px 20px" onclick="toggleJoinCategory('${currentCategory}', this)">
-          ${isJoined ? "Вийти" : "Приєднатись"}
-        </button>
-      </div>
-    </div>`;
+  // 1. Скидаємо стан перед новим малюванням (наприклад, при зміні категорії чи сортування)
+  feedState.filtered = postsToRender;
+  feedState.displayedCount = 0;
+  pf.innerHTML = ""; // Очищаємо стрічку
+  
+  // Видаляємо старий тригер завантаження, якщо він був
+  let oldTrigger = document.getElementById("scrollTrigger");
+  if (oldTrigger) oldTrigger.remove();
+
+  // 2. Якщо постів немає — показуємо заглушку
+  if (feedState.filtered.length === 0) {
+      pf.innerHTML = `<div style="text-align:center; padding:40px; color:var(--muted); background: var(--surface); border-radius: 12px; border: 1px dashed var(--border);">Постів не знайдено 📭</div>`;
+      return;
   }
 
-  // Збираємо всі пости до купи
-  html += list.map((p) => postCard(p)).join("");
+  // 3. Відмальовуємо першу порцію
+  loadMorePosts();
+}
 
-  // 🛑 ОСЬ ТОЙ САМИЙ НОВИЙ БЛОК: Розумна перевірка на порожню стрічку
-  if (list.length === 0) {
-    const isHome = !currentCategory && (window.location.pathname.includes("index.html") || window.location.pathname === "/");
-    
-    if (isHome) {
-      feedContainer.innerHTML = `
-        <div style="text-align:center; padding:60px 20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; animation: fadeIn 0.4s ease;">
-          <div style="font-size:48px; margin-bottom:16px;">🏠</div>
-          <h2 style="font-family:var(--font-head); margin-bottom:8px;">Ваша стрічка поки порожня</h2>
-          <p style="color:var(--muted); margin-bottom:24px; max-width:400px; margin-left:auto; margin-right:auto;">
-            Підпишіться на цікаві спільноти, щоб бачити тут їхні останні новини.
-          </p>
-          <a href="categories.html" class="btn btn-accent" style="text-decoration:none; padding:10px 24px; border-radius:8px;">
-            🔍 Переглянути категорії
-          </a>
-        </div>`;
-    } else {
-      feedContainer.innerHTML = `<div style="text-align:center; padding:40px; color:var(--muted)">Постів ще немає</div>`;
-    }
+// ── Функція підвантаження (Магія Безкінечного Скролу) ──────────
+export function loadMorePosts() {
+  const pf = document.getElementById("postFeed");
+  if (!pf) return;
+
+  // Беремо наступні N постів
+  const nextBatch = feedState.filtered.slice(feedState.displayedCount, feedState.displayedCount + feedState.chunk);
+  if (nextBatch.length === 0) return;
+
+  // Відмальовуємо їх (використовуємо твою існуючу функцію postCard)
+  const html = nextBatch.map(p => postCard(p)).join("");
+  
+  // insertAdjacentHTML додає нові пости вниз, не ламаючи ті, що вже є на екрані
+  pf.insertAdjacentHTML("beforeend", html);
+
+  feedState.displayedCount += nextBatch.length;
+
+  // Налаштовуємо радар (Observer)
+  if (feedState.observer) feedState.observer.disconnect();
+
+  if (feedState.displayedCount < feedState.filtered.length) {
+     // Створюємо невидимий тригер під постами
+     let trigger = document.getElementById("scrollTrigger");
+     if (!trigger) {
+        trigger = document.createElement("div");
+        trigger.id = "scrollTrigger";
+        trigger.style.padding = "30px";
+        trigger.style.textAlign = "center";
+        trigger.style.color = "var(--muted)";
+        trigger.style.fontWeight = "bold";
+        trigger.innerHTML = "Завантаження... 🐐";
+        pf.after(trigger); 
+     }
+
+     // Радар, який спрацьовує, коли юзер наближається до тригера
+     feedState.observer = new IntersectionObserver((entries) => {
+         if (entries[0].isIntersecting) {
+             // Як тільки тригер з'являється на екрані, завантажуємо ще
+             // Додаємо маленьку затримку 300мс для ефекту плавності
+             setTimeout(loadMorePosts, 300); 
+         }
+     }, { rootMargin: "200px" }); // Починаємо вантажити за 600px до кінця сторінки, щоб юзер навіть не помічав зупинок!
+
+     feedState.observer.observe(trigger);
   } else {
-    // Якщо пости є - просто вставляємо їх
-    feedContainer.innerHTML = html;
+     // Якщо пости закінчилися — показуємо фінальний напис
+     let trigger = document.getElementById("scrollTrigger");
+     if (trigger) {
+         trigger.innerHTML = "🏁 Ви переглянули всі пости";
+         trigger.style.opacity = "0.5";
+     }
   }
-
-  // ✅ Ці функції безпечно залишаються в самому кінці
-  renderFeatured(list);
-  renderSidebarCommunities();
 }
 
 export function renderFeatured(data) {
